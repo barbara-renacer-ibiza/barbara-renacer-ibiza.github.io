@@ -1,0 +1,20 @@
+CREATE TABLE `products` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`slug` varchar(160) NOT NULL,
+	`sourceLanguage` enum('it','en','es') NOT NULL DEFAULT 'it',
+	`nameIt` text NOT NULL,
+	`descriptionIt` text NOT NULL,
+	`nameEn` text,
+	`descriptionEn` text,
+	`nameEs` text,
+	`descriptionEs` text,
+	`priceCents` int NOT NULL DEFAULT 0,
+	`currency` varchar(3) NOT NULL DEFAULT 'EUR',
+	`imageUrl` varchar(512),
+	`whatsappMessage` text,
+	`isPublished` int NOT NULL DEFAULT 1,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `products_id` PRIMARY KEY(`id`),
+	CONSTRAINT `products_slug_unique` UNIQUE(`slug`)
+);

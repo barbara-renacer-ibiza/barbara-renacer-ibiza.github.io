@@ -172,7 +172,7 @@ const plugins = [vitePluginPublicPlatformConfig(), react(), tailwindcss(), jsxLo
 
 export default defineConfig({
   plugins,
-  base: process.env.GITHUB_PAGES === "true" ? "/barbara-renacer-ibiza/" : "/",
+  base: "/",
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

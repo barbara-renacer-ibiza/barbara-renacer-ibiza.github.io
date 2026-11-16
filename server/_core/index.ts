@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
+import { randomUUID } from "node:crypto";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { publicPlatformScript } from "./publicConfig";
@@ -10,6 +11,8 @@ import { serveStatic, setupVite } from "./vite";
 import { invokeLLM } from "./llm";
 import { clearAdminPinSession, isAdminPinSession, isValidAdminPin, setAdminPinSession } from "./adminPin";
 import { checkSupabaseConnection } from "./supabase";
+import { storagePut } from "../storage";
+import { decodeProductImageDataUrl, ProductImageUploadError } from "./productImage";
 
 async function startServer() {
   const app = express();
@@ -28,6 +31,25 @@ async function startServer() {
   app.post("/api/admin/lock", (req, res) => {
     clearAdminPinSession(res, req);
     return res.json({ unlocked: false });
+  });
+  app.post("/api/admin/upload-image", async (req, res) => {
+    if (!isAdminPinSession(req)) return res.status(401).json({ error: "Sessione amministrativa non valida." });
+
+    let image: ReturnType<typeof decodeProductImageDataUrl>;
+    try {
+      image = decodeProductImageDataUrl(req.body?.dataUrl);
+    } catch (error) {
+      if (error instanceof ProductImageUploadError) return res.status(error.status).json({ error: error.message });
+      return res.status(400).json({ error: "Formato immagine non supportato." });
+    }
+
+    try {
+      const uploaded = await storagePut(`products/${randomUUID()}.${image.extension}`, image.bytes, image.contentType);
+      return res.json({ url: uploaded.url });
+    } catch (error) {
+      console.error("[Admin image upload] Failed:", error);
+      return res.status(502).json({ error: "Caricamento immagine non riuscito. Riprova." });
+    }
   });
   app.get("/api/platform/config.js", (_req, res) => {
     res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
@@ -49,6 +71,7 @@ async function startServer() {
     }
   });
   app.post("/api/translate", async (req, res) => {
+    if (!isAdminPinSession(req)) return res.status(401).json({ error: "Sessione amministrativa non valida." });
     const sourceLanguage = ["it", "en", "es"].includes(req.body?.sourceLanguage) ? req.body.sourceLanguage : "it";
     const sourceName = typeof req.body?.name === "string" ? req.body.name.trim() : "";
     const sourceDescription = typeof req.body?.description === "string" ? req.body.description.trim() : "";

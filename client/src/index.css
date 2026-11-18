@@ -961,3 +961,102 @@ body { background: var(--paper); color: var(--ink); }
   .admin-security-intro { margin-inline: 19px; }
   .admin-security-form { padding-inline: 19px; }
 }
+
+
+/* Renacer hero photograph and botanical journal seal */
+.hero__visual {
+  min-height: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(41, 67, 49, .19);
+  border-radius: 24px;
+  background: #31483b;
+  box-shadow: 0 24px 58px rgba(36, 54, 40, .17), 0 4px 12px rgba(36, 54, 40, .08);
+}
+.hero__visual::before {
+  z-index: 2;
+  inset: 13px;
+  border: 1px solid rgba(255, 250, 235, .66);
+  border-radius: 15px;
+}
+.hero__visual::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(19, 34, 26, .04) 35%, rgba(19, 34, 26, .42) 100%);
+}
+.hero__photo {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(.9) contrast(1.02);
+  transition: transform .7s cubic-bezier(.2,.7,.2,1), filter .7s ease;
+}
+.hero__visual:hover .hero__photo {
+  transform: scale(1.025);
+  filter: saturate(.96) contrast(1.02);
+}
+.hero__visual-label {
+  z-index: 3;
+  color: #294b39;
+  border-color: rgba(255, 250, 239, .5);
+  background: rgba(250, 248, 240, .91);
+  box-shadow: 0 4px 14px rgba(19, 34, 26, .12);
+  backdrop-filter: blur(8px);
+}
+.nutrition-hero__mark {
+  gap: 2px;
+  width: 132px;
+  height: 132px;
+  border-color: rgba(43, 76, 57, .32);
+  background: radial-gradient(circle at 34% 27%, #fffdf6 0, #f0f3eb 66%, #e4eade 100%);
+  box-shadow: inset 0 0 0 5px rgba(255, 255, 255, .4), 0 8px 20px rgba(41, 67, 49, .07);
+}
+.nutrition-hero__emblem {
+  display: block;
+  width: 72px;
+  height: 72px;
+  color: #345943;
+}
+.nutrition-hero__wordmark {
+  display: block;
+  color: #294b39;
+  font-family: var(--serif);
+  font-size: 15px;
+  letter-spacing: -.035em;
+}
+.nutrition-hero__wordmark small {
+  display: block;
+  margin-top: 1px;
+  color: #8a7159;
+  font-family: var(--sans);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .28em;
+}
+@media (max-width: 900px) {
+  .nutrition-hero__mark { width: 104px; height: 104px; }
+  .nutrition-hero__emblem { width: 60px; height: 60px; }
+  .nutrition-hero__wordmark { font-size: 12px; }
+}
+@media (max-width: 620px) {
+  .hero__visual { min-height: 0; aspect-ratio: 4 / 3; border-radius: 19px; }
+  .hero__visual::before { inset: 10px; border-radius: 12px; }
+  .hero__visual-label--top { top: 20px; left: 19px; }
+  .hero__visual-label--bottom { right: 18px; bottom: 18px; }
+  .nutrition-hero { grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 15px; padding: 19px; }
+  .nutrition-hero__mark { display: grid; width: 82px; height: 82px; gap: 0; }
+  .nutrition-hero__emblem { width: 48px; height: 48px; }
+  .nutrition-hero__wordmark { font-size: 10px; }
+  .nutrition-hero__wordmark small { font-size: 5px; }
+  .nutrition-hero h1 { font-size: clamp(29px, 7.7vw, 38px); }
+  .nutrition-hero p { font-size: 12px; }
+}

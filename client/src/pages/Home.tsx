@@ -66,35 +66,6 @@ function BotanicalMark({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function BotanicalIllustration() {
-  return (
-    <svg className="hero-illustration" viewBox="0 0 620 520" role="img" aria-label="Illustrazione botanica ispirata all'isola di Ibiza">
-      <defs>
-        <linearGradient id="sunset" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="#f4c48d" />
-          <stop offset="1" stopColor="#d88758" />
-        </linearGradient>
-        <linearGradient id="sage" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="#80947b" />
-          <stop offset="1" stopColor="#4f6e5a" />
-        </linearGradient>
-      </defs>
-      <circle cx="430" cy="152" r="108" fill="url(#sunset)" opacity=".95" />
-      <path d="M0 380c93-45 163-33 229 10 79 51 131 42 198 5 67-37 128-41 193-3v128H0Z" fill="#d4b18c" opacity=".8" />
-      <path d="M0 418c73-31 135-32 202 2 70 35 117 40 194 1 74-38 140-39 224-4v103H0Z" fill="#b8c1a3" opacity=".88" />
-      <path d="M0 458c81-33 151-28 221 8 78 40 137 31 208-4 65-32 119-30 191 5v53H0Z" fill="#6d8770" />
-      <path d="M112 447c-6-64 5-119 34-167M146 440c13-57 36-102 71-136M139 385c-25-26-44-52-54-79M160 339c24-20 48-38 76-48M152 420c30-11 58-16 91-12" fill="none" stroke="#f7f0e5" strokeWidth="5" strokeLinecap="round" opacity=".82" />
-      <path d="M112 447c-6-64 5-119 34-167M146 440c13-57 36-102 71-136" fill="none" stroke="#3d6552" strokeWidth="7" strokeLinecap="round" />
-      <path d="M407 406c-2-82 15-140 48-180M445 406c20-50 49-91 92-119M441 353c-28-25-49-51-61-82M455 319c34-20 59-39 79-67" fill="none" stroke="#dbe0c5" strokeWidth="5" strokeLinecap="round" opacity=".83" />
-      <path d="M407 406c-2-82 15-140 48-180M445 406c20-50 49-91 92-119" fill="none" stroke="url(#sage)" strokeWidth="8" strokeLinecap="round" />
-      <circle cx="96" cy="104" r="4" fill="#f7f0e5" opacity=".8" />
-      <circle cx="135" cy="73" r="2.8" fill="#f7f0e5" opacity=".8" />
-      <circle cx="515" cy="77" r="3" fill="#f7f0e5" opacity=".8" />
-      <path d="M492 205c18 0 33 15 33 33h-33Z" fill="#f7f0e5" opacity=".5" />
-    </svg>
-  );
-}
-
 function SectionEyebrow({ children, icon }: { children: string; icon?: ReactNode }) {
   return (
     <div className="section-eyebrow">
@@ -295,9 +266,9 @@ export default function Home() {
               <span>Ibiza</span><span className="signature-dot" /><span>{language === "en" ? "personal production" : language === "es" ? "producción personal" : "produzione personale"}</span><span className="signature-dot" /><span>{language === "en" ? "catalogue in preparation" : language === "es" ? "catálogo en preparación" : "catalogo in preparazione"}</span>
             </div>
           </div>
-          <div className="hero__visual" aria-hidden="true">
+          <div className="hero__visual">
             <div className="hero__visual-label hero__visual-label--top">Il ritmo di Ibiza</div>
-            <BotanicalIllustration />
+            <img className="hero__photo" src={assetUrl("/images/renacer-collection.webp")} alt="Creme, pomate e oli Renacer davanti al mare di Ibiza" />
             <div className="hero__visual-label hero__visual-label--bottom"><Sprout size={15} /> piante, mani, tempo</div>
           </div>
         </section>

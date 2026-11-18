@@ -49,16 +49,11 @@ const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
 const supabaseKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
 const adminFunctionUrl = supabaseUrl + "/functions/v1/renacer-admin";
 
-function request(path: string, init: RequestInit = {}) {
-  return fetch(supabaseUrl + path, {
-    ...init,
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + supabaseKey,
-      "Content-Type": "application/json",
-      ...(init.headers || {}),
-    },
-  });
+class AdminRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "AdminRequestError";
+  }
 }
 
 async function adminRequest(action: string, payload: Record<string, unknown> = {}) {
@@ -74,8 +69,14 @@ async function adminRequest(action: string, payload: Record<string, unknown> = {
     body: JSON.stringify({ action, ...payload }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Operazione non disponibile");
+  if (!response.ok) throw new AdminRequestError(data.error || "Operazione non disponibile", response.status);
   return data;
+}
+
+function hasValidAdminSession() {
+  const token = sessionStorage.getItem("renacer_admin_token");
+  const expiry = Number(token?.split(".")[0]);
+  return Number.isFinite(expiry) && expiry > Date.now();
 }
 
 const blankProduct = { name: "", description: "", price: "", category: "Altro", imageUrl: "", whatsappMessage: "" };
@@ -109,7 +110,7 @@ function AdminHeader({ onLogout }: { onLogout?: () => void }) {
 
 export default function Admin() {
   const [pin, setPin] = useState("");
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("renacer_admin_token") === "ok");
+  const [unlocked, setUnlocked] = useState(hasValidAdminSession);
   const [pinError, setPinError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -120,28 +121,78 @@ export default function Admin() {
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [editingArticle, setEditingArticle] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
+  const [imageUploading, setImageUploading] = useState<"product" | "article" | null>(null);
 
   const load = async () => {
-    const [productsResponse, articlesResponse] = await Promise.all([
-      request("/rest/v1/products?select=*&order=createdAt.desc"),
-      request("/rest/v1/nutrition_articles?select=*&order=createdAt.desc"),
-    ]);
-    if (productsResponse.ok) setProducts(await productsResponse.json());
-    if (articlesResponse.ok) setArticles(await articlesResponse.json());
+    const data = await adminRequest("list");
+    setProducts(Array.isArray(data.products) ? data.products : []);
+    setArticles(Array.isArray(data.articles) ? data.articles : []);
+  };
+
+  const logout = (expired = false) => {
+    sessionStorage.removeItem("renacer_admin_token");
+    setUnlocked(false);
+    if (expired) setPinError("La sessione è scaduta. Inserisci di nuovo il PIN.");
   };
 
   useEffect(() => {
-    if (unlocked) void load();
+    if (!unlocked) return;
+    void load().catch((loadError) => {
+      if (loadError instanceof AdminRequestError && loadError.status === 401) logout(true);
+      else setError(loadError instanceof Error ? loadError.message : "Caricamento non riuscito.");
+    });
   }, [unlocked]);
 
   const login = async () => {
     setPinError("");
     try {
-      await adminRequest("login", { pin });
-      sessionStorage.setItem("renacer_admin_token", "ok");
+      const result = await adminRequest("login", { pin });
+      if (typeof result.token !== "string" || !result.token) throw new Error("Token di sessione non ricevuto.");
+      sessionStorage.setItem("renacer_admin_token", result.token);
       setUnlocked(true);
-    } catch {
-      setPinError("Codice PIN non valido.");
+    } catch (loginError) {
+      setPinError(loginError instanceof AdminRequestError && loginError.status === 401
+        ? "Codice PIN non valido."
+        : loginError instanceof Error ? loginError.message : "Accesso non disponibile. Riprova.");
+    }
+  };
+
+  const uploadImage = async (file: File | undefined, entity: "product" | "article") => {
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Formato non supportato. Usa JPG, PNG, WebP, GIF o AVIF.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("L'immagine deve avere una dimensione massima di 10 MB.");
+      return;
+    }
+    setImageUploading(entity);
+    setError("");
+    setNotice("");
+    try {
+      const form = new FormData();
+      form.set("action", "upload_image");
+      form.set("entity", entity);
+      form.set("file", file);
+      const token = sessionStorage.getItem("renacer_admin_token") || "";
+      const response = await fetch(adminFunctionUrl, {
+        method: "POST",
+        headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey, "x-renacer-token": token },
+        body: form,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new AdminRequestError(data.error || "Caricamento immagine non riuscito.", response.status);
+      if (typeof data.url !== "string") throw new Error("Il caricamento non ha restituito l'indirizzo dell'immagine.");
+      if (entity === "product") setProduct((current) => ({ ...current, imageUrl: data.url }));
+      else setArticle((current) => ({ ...current, imageUrl: data.url }));
+      setNotice("Immagine caricata. Salva il contenuto per pubblicarla.");
+    } catch (uploadError) {
+      if (uploadError instanceof AdminRequestError && uploadError.status === 401) logout(true);
+      else setError(uploadError instanceof Error ? uploadError.message : "Caricamento immagine non riuscito.");
+    } finally {
+      setImageUploading(null);
     }
   };
 
@@ -156,8 +207,9 @@ export default function Admin() {
       const result = await adminRequest("translate", { sourceLanguage: "it", name: product.name, description: product.description });
       if (!result?.it || !result?.en || !result?.es) throw new Error();
       setNotice("Traduzioni automatiche pronte per il controllo.");
-    } catch {
-      setError("Traduzione automatica non disponibile. Riprova tra poco.");
+    } catch (translationError) {
+      if (translationError instanceof AdminRequestError && translationError.status === 401) logout(true);
+      else setError("Traduzione automatica non disponibile. Riprova tra poco.");
     } finally {
       setBusy(false);
     }
@@ -194,7 +246,8 @@ export default function Admin() {
       setEditingProduct(null);
       setNotice("Prodotto salvato e pubblicato.");
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Salvataggio fallito");
+      if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
+      else setError(saveError instanceof Error ? saveError.message : "Salvataggio fallito");
     } finally {
       setBusy(false);
     }
@@ -227,15 +280,11 @@ export default function Admin() {
       setEditingArticle(null);
       setNotice("Articolo Nutrition pubblicato.");
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Salvataggio articolo fallito");
+      if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
+      else setError(saveError instanceof Error ? saveError.message : "Salvataggio articolo fallito");
     } finally {
       setBusy(false);
     }
-  };
-
-  const logout = () => {
-    sessionStorage.removeItem("renacer_admin_token");
-    setUnlocked(false);
   };
 
   if (!unlocked) {
@@ -284,8 +333,14 @@ export default function Admin() {
             <label>Categoria<select value={product.category} onChange={(event) => setProduct({ ...product, category: event.target.value })}><option>Altro</option><option>Cura del viso</option><option>Cura del corpo</option><option>Oli e balsami</option><option>Regali</option><option>Novità</option></select></label>
           </div>
           <div className="admin-form-grid admin-form-grid--compact">
-            <label><span><ImageIcon size={12} /> URL immagine</span><input value={product.imageUrl} onChange={(event) => setProduct({ ...product, imageUrl: event.target.value })} placeholder="https://..." /></label>
             <label><span>Messaggio WhatsApp opzionale</span><input value={product.whatsappMessage} onChange={(event) => setProduct({ ...product, whatsappMessage: event.target.value })} placeholder="Es. Ciao Barbara, vorrei saperne di più..." /></label>
+            <div className="admin-extra-grid admin-image-grid">
+              <div className="admin-upload-label">
+                <label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "product" ? "Caricamento immagine..." : product.imageUrl ? "Sostituisci immagine prodotto" : "Carica immagine prodotto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "product"); event.currentTarget.value = ""; }} /></span></label>
+                <small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small>
+              </div>
+              <div className="admin-image-preview">{product.imageUrl ? <><img src={product.imageUrl} alt="Anteprima immagine prodotto" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine prodotto" onClick={() => setProduct({ ...product, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div>
+            </div>
           </div>
           <div className="admin-card__bottom"><p><span className="admin-dot" /> I campi in italiano sono la fonte del catalogo</p><div className="admin-actions"><button className="admin-secondary" type="button" onClick={() => void translate()} disabled={busy}><Sparkles size={14} /> Prepara traduzioni</button><button className="admin-primary" type="button" onClick={() => void saveProduct()} disabled={busy}>{editingProduct ? <Pencil size={14} /> : <Save size={14} />}{editingProduct ? "Aggiorna prodotto" : "Salva e pubblica"}</button></div></div>
         </section>
@@ -293,7 +348,13 @@ export default function Admin() {
         <section className="admin-card admin-article-card">
           <div className="admin-card__top"><div><span className="admin-card__number">02 / NUTRIZIONE</span><h2>{editingArticle ? "Modifica articolo" : "Nuovo articolo"}</h2></div><span className="admin-badge"><BookOpen size={12} /> Journal Renacer</span></div>
           <div className="admin-form-grid"><label>Titolo dell'articolo<input value={article.title} onChange={(event) => setArticle({ ...article, title: event.target.value })} placeholder="Es. Una cura più ampia" /></label><label>Testo dell'articolo<textarea value={article.body} onChange={(event) => setArticle({ ...article, body: event.target.value })} rows={6} placeholder="Scrivi una nota per la sezione Nutrizione..." /></label></div>
-          <div className="admin-extra-grid"><label><span><ImageIcon size={12} /> URL immagine</span><input value={article.imageUrl} onChange={(event) => setArticle({ ...article, imageUrl: event.target.value })} placeholder="https://..." /></label></div>
+          <div className="admin-extra-grid admin-image-grid">
+            <div className="admin-upload-label">
+              <label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "article" ? "Caricamento immagine..." : article.imageUrl ? "Sostituisci immagine articolo" : "Carica immagine articolo"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "article"); event.currentTarget.value = ""; }} /></span></label>
+              <small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small>
+            </div>
+            <div className="admin-image-preview">{article.imageUrl ? <><img src={article.imageUrl} alt="Anteprima immagine articolo" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine articolo" onClick={() => setArticle({ ...article, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div>
+          </div>
           <div className="admin-card__bottom"><p><FileText size={14} /> Pubblicato nella sezione Nutrizione</p><button className="admin-primary" type="button" onClick={() => void saveArticle()} disabled={busy}>{editingArticle ? <Pencil size={14} /> : <Plus size={14} />}{editingArticle ? "Aggiorna articolo" : "Pubblica articolo"}</button></div>
         </section>
 

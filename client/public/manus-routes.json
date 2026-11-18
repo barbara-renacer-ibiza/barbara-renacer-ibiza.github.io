@@ -1,1 +1,1 @@
-{"routes":[{"path":"/","title":"Renacer · Ibiza — Barbara Claps"},{"path":"/admin","title":"Gestione catalogo Renacer"}]}
+{"routes":[{"path":"/","title":"Renacer · Ibiza — Barbara Claps"},{"path":"/nutrition","title":"Nutrition · Renacer Ibiza"},{"path":"/nutrition/:slug","title":"Nutrition article · Renacer Ibiza"},{"path":"/admin","title":"Gestione Renacer"},{"path":"/admin/:section","title":"Admin section · Renacer"}]}

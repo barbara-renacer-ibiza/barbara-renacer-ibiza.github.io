@@ -46,6 +46,12 @@ const copy: Record<Language, Record<string, string>> = {
   },
 };
 
+const nutritionCopy: Record<Language, Record<string, string>> = {
+  it: { allCategories: "Tutte le categorie", searchEmpty: "Nessun prodotto corrisponde alla ricerca.", learnMore: "Leggi di più", allArticles: "Tutti gli articoli" },
+  en: { allCategories: "All categories", searchEmpty: "No products match your search.", learnMore: "Learn more", allArticles: "All articles" },
+  es: { allCategories: "Todas las categorías", searchEmpty: "No hay productos que coincidan con la búsqueda.", learnMore: "Leer más", allArticles: "Todos los artículos" },
+};
+
 function BotanicalMark({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "brand-mark brand-mark--compact" : "brand-mark"} aria-hidden="true">
@@ -111,7 +117,22 @@ type ProductView = {
   whatsappMessage: string | null;
   priceCents: number;
   category: string;
+  categorySlug: string;
 };
+
+type NutritionArticleView = {
+  id: number;
+  slug: string;
+  titleIt: string;
+  bodyIt: string;
+  titleEn: string | null;
+  bodyEn: string | null;
+  titleEs: string | null;
+  bodyEs: string | null;
+  imageUrl: string | null;
+};
+
+type CategoryView = { slug: string; nameIt: string; nameEn: string | null; nameEs: string | null; isActive: boolean };
 
 function productCopy(product: ProductView, language: Language) {
   const names: Record<Language, string | null> = { it: product.nameIt, en: product.nameEn, es: product.nameEs };
@@ -127,7 +148,7 @@ function productWhatsappLink(product: ProductView, language: Language, name: str
   return `${whatsappLink}?text=${encodeURIComponent(customMessage || prompts[language])}`;
 }
 
-function ProductCard({ product, language, ctaLabel }: { product: ProductView; language: Language; ctaLabel: string }) {
+function ProductCard({ product, language, ctaLabel, categoryLabel }: { product: ProductView; language: Language; ctaLabel: string; categoryLabel: string }) {
   const localized = productCopy(product, language);
   const link = productWhatsappLink(product, language, localized.name);
   const originalCopyLabel = {
@@ -140,47 +161,68 @@ function ProductCard({ product, language, ctaLabel }: { product: ProductView; la
       <div className="product-card__image-wrap">
         {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
       </div>
-      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{product.category}</small><a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
+      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small><a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
     </article>
   );
+}
+
+function articleTitleFor(article: NutritionArticleView, language: Language) {
+  return (language === "en" ? article.titleEn : language === "es" ? article.titleEs : article.titleIt)?.trim() || article.titleIt;
+}
+
+function articleBodyFor(article: NutritionArticleView, language: Language) {
+  return (language === "en" ? article.bodyEn : language === "es" ? article.bodyEs : article.bodyIt)?.trim() || article.bodyIt;
+}
+
+function articleExcerpt(body: string, wordCount = 36) {
+  const words = body.replace(/\s+/g, " ").trim().split(" ");
+  return words.length > wordCount ? `${words.slice(0, wordCount).join(" ")}…` : words.join(" ");
 }
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [language, setLanguage] = useState<Language>("it");
   const [products, setProducts] = useState<ProductView[]>([]);
-  const [articles, setArticles] = useState<any[]>([]);
+  const [catalogCategories, setCatalogCategories] = useState<CategoryView[]>([]);
+  const [articles, setArticles] = useState<NutritionArticleView[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Tutte");
-  const t = (key: string) => copy[language][key] ?? copy.it[key] ?? key;
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const t = (key: string) => nutritionCopy[language][key] ?? copy[language][key] ?? copy.it[key] ?? key;
 
   useEffect(() => {
-    fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,isPublished&isPublished=eq.1&order=createdAt.desc`, {
-      headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` },
-    })
-      .then((response) => response.ok ? response.json() : [])
-      .then((items: ProductView[]) => setProducts(items))
-      .catch(() => setProducts([]));
+    const headers = { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` };
+    Promise.all([
+      fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,categorySlug,isPublished&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => response.ok ? response.json() : []),
+      fetch(`${supabaseUrl}/rest/v1/categories?select=slug,nameIt,nameEn,nameEs,isActive&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
+    ]).then(([items, categoryRows]: [ProductView[], CategoryView[]]) => {
+      setProducts(items);
+      setCatalogCategories(categoryRows);
+    }).catch(() => { setProducts([]); setCatalogCategories([]); });
   }, []);
 
-  useEffect(() => { fetch(`${supabaseUrl}/rest/v1/nutrition_articles?select=*&isPublished=eq.1&order=createdAt.desc`, { headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` } }).then(r => r.ok ? r.json() : []).then(setArticles).catch(() => setArticles([]));
+  useEffect(() => {
+    fetch(`${supabaseUrl}/rest/v1/nutrition_articles?select=id,slug,titleIt,bodyIt,titleEn,bodyEn,titleEs,bodyEs,imageUrl&isPublished=eq.1&order=createdAt.desc`, { headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` } }).then((response) => response.ok ? response.json() : []).then((items: NutritionArticleView[]) => setArticles(items)).catch(() => setArticles([]));
   }, []);
 
   useEffect(() => {
     let cancelled = false;
+    const stored = localStorage.getItem("renacer_language");
+    if (stored === "it" || stored === "en" || stored === "es") { setLanguage(stored); return () => { cancelled = true; }; }
     const browserLanguage = (navigator.language || "it").slice(0, 2) as Language;
     fetch("/api/locale").then((response) => response.json()).then((geo: { language?: Language | null }) => {
-      if (cancelled) return;
-      setLanguage(geo.language ?? (["it", "en", "es"].includes(browserLanguage) ? browserLanguage : "it"));
-    }).catch(() => {
-      if (!cancelled && ["it", "en", "es"].includes(browserLanguage)) setLanguage(browserLanguage);
-    });
+      if (!cancelled) setLanguage(geo.language ?? (["it", "en", "es"].includes(browserLanguage) ? browserLanguage : "it"));
+    }).catch(() => { if (!cancelled && ["it", "en", "es"].includes(browserLanguage)) setLanguage(browserLanguage); });
     return () => { cancelled = true; };
   }, []);
 
   const closeMenu = () => setMenuOpen(false);
-  const categories = ["Tutte", ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
-  const visibleProducts = products.filter((product) => { const text = `${product.nameIt} ${product.descriptionIt} ${product.nameEn || ""} ${product.nameEs || ""}`.toLowerCase(); return (!search.trim() || text.includes(search.toLowerCase())) && (selectedCategory === "Tutte" || product.category === selectedCategory); });
+  const categoryLabel = (item: CategoryView) => language === "en" ? item.nameEn || item.nameIt : language === "es" ? item.nameEs || item.nameIt : item.nameIt;
+  const usedCategorySlugs = new Set(products.map((item) => item.categorySlug));
+  const categoryOptions = catalogCategories.filter((item) => usedCategorySlugs.has(item.slug));
+  const visibleProducts = products.filter((item) => {
+    const searchable = `${item.nameIt} ${item.descriptionIt} ${item.nameEn || ""} ${item.nameEs || ""}`.toLowerCase();
+    return (!search.trim() || searchable.includes(search.toLowerCase())) && (selectedCategory === "all" || item.categorySlug === selectedCategory);
+  });
 
   return (
     <div className="site-shell">
@@ -214,7 +256,7 @@ export default function Home() {
           <nav className={menuOpen ? "main-nav main-nav--open" : "main-nav"} aria-label="Navigazione principale">
             {[
               { label: t("project"), href: "#progetto" },
-              { label: t("nutrition"), href: "#nutrizione" },
+              { label: t("nutrition"), href: "/nutrition" },
               { label: t("catalog"), href: "#catalogo" },
               { label: t("contact"), href: "#contatti" },
             ].map((item) => (
@@ -226,7 +268,7 @@ export default function Home() {
             <div className="language-switcher" aria-label={t("languageNote")}>
               <Languages size={15} />
               {(Object.keys(languageLabels) as Language[]).map((option) => (
-                <button key={option} type="button" className={language === option ? "language-switcher__option is-active" : "language-switcher__option"} onClick={() => setLanguage(option)}>{languageLabels[option]}</button>
+                <button key={option} type="button" className={language === option ? "language-switcher__option is-active" : "language-switcher__option"} onClick={() => { localStorage.setItem("renacer_language", option); setLanguage(option); }}>{languageLabels[option]}</button>
               ))}
             </div>
           </nav>
@@ -277,16 +319,17 @@ export default function Home() {
               </div>
               <p>{t("catalogBody")}</p>
             </div>
-            <div className="catalog-filters"><input aria-label="Cerca prodotti" placeholder={language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"} value={search} onChange={(event) => setSearch(event.target.value)} /> <div className="category-filters">{categories.map((category) => <button key={category} type="button" className={selectedCategory === category ? "is-active" : ""} onClick={() => setSelectedCategory(category)}>{category}</button>)}</div></div>{visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((product) => <ProductCard key={product.id} product={product} language={language} ctaLabel={t("askNow")} />)}</div> : <div className="empty-catalog">
-              <div className="empty-catalog__mark"><Leaf size={32} strokeWidth={1.1} /></div>
-              <div>
-                <span className="empty-catalog__eyebrow">{t("emptyEyebrow")}</span>
-                <h3>{t("emptyTitle")}</h3>
-                <p>{t("emptyBody")}</p>
+            <div className="catalog-filters">
+              <label className="catalog-search"><span className="sr-only">{language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"}</span><input aria-label={language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"} placeholder={language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"} value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+              <div className="category-filters" aria-label={t("allCategories")}>
+                <button type="button" className={selectedCategory === "all" ? "is-active" : ""} onClick={() => setSelectedCategory("all")}>{t("allCategories")}</button>
+                {categoryOptions.map((category) => <button key={category.slug} type="button" className={selectedCategory === category.slug ? "is-active" : ""} onClick={() => setSelectedCategory(category.slug)}>{categoryLabel(category)}</button>)}
               </div>
-              <a className="button button--outline" href={whatsappLink} target="_blank" rel="noreferrer">
-                {t("ask")} <ArrowUpRight size={17} />
-              </a>
+            </div>
+            {visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((item) => <ProductCard key={item.id} product={item} language={language} ctaLabel={t("askNow")} categoryLabel={categoryOptions.find((category) => category.slug === item.categorySlug) ? categoryLabel(categoryOptions.find((category) => category.slug === item.categorySlug)!) : item.category} />)}</div> : products.length > 0 ? <p className="catalog-no-results">{t("searchEmpty")}</p> : <div className="empty-catalog">
+              <div className="empty-catalog__mark"><Leaf size={32} strokeWidth={1.1} /></div>
+              <div><span className="empty-catalog__eyebrow">{t("emptyEyebrow")}</span><h3>{t("emptyTitle")}</h3><p>{t("emptyBody")}</p></div>
+              <a className="button button--outline" href={whatsappLink} target="_blank" rel="noreferrer">{t("ask")} <ArrowUpRight size={17} /></a>
             </div>}
             <div className="catalog-footnote"><ShieldCheck size={15} /> {products.length > 0 ? (language === "en" ? "Ask on WhatsApp about details and availability." : language === "es" ? "Pregunta por WhatsApp sobre detalles y disponibilidad." : "Chiedi su WhatsApp informazioni e disponibilità.") : (language === "en" ? "Products will appear here when Barbara adds them." : language === "es" ? "Los productos aparecerán aquí cuando Barbara los añada." : "I prodotti appariranno qui quando Barbara li aggiungerà.")}</div>
           </div>
@@ -300,7 +343,7 @@ export default function Home() {
           <div className="story-section__body">
             <p className="story-section__lead">{t("storyLead")}</p>
             <p>{t("storyBody")}</p>
-            <a className="arrow-link" href="#nutrizione">{t("storyLink")} <ArrowUpRight size={16} /></a>
+            <a className="arrow-link" href="/nutrition">{t("storyLink")} <ArrowUpRight size={16} /></a>
           </div>
         </section>
 
@@ -339,12 +382,21 @@ export default function Home() {
             <SectionEyebrow icon={<BookOpen size={14} />}>{t("nutritionEyebrow")}</SectionEyebrow>
             <h2>{t("nutritionTitle")}</h2>
             <p>{t("nutritionBody")}</p>
-            <div className="future-list">
+            {articles.length > 0 ? <div className="nutrition-home-articles">{articles.slice(0, 2).map((item) => {
+              const title = articleTitleFor(item, language);
+              const body = articleBodyFor(item, language);
+              return <article key={item.id} className="nutrition-preview">
+                <a className="nutrition-preview__image" href={`/nutrition/${encodeURIComponent(item.slug)}`} aria-label={`${t("learnMore")}: ${title}`}>
+                  {item.imageUrl ? <img src={item.imageUrl} alt={title} loading="lazy" /> : <span><Leaf size={23} /></span>}
+                </a>
+                <div><span className="nutrition-preview__label">Renacer · Nutrition</span><h3>{title}</h3><p>{articleExcerpt(body)}</p><a className="nutrition-preview__link" href={`/nutrition/${encodeURIComponent(item.slug)}`}>{t("learnMore")} <ArrowUpRight size={14} /></a></div>
+              </article>;
+            })}</div> : <div className="future-list">
               <div><Check size={16} /> {t("futureOne")}</div>
               <div><Check size={16} /> {t("futureTwo")}</div>
               <div><Check size={16} /> {t("futureThree")}</div>
-            </div>
-          {articles.length > 0 ? <div className="nutrition-articles">{articles.map((article) => { const title = language === "en" ? (article.titleEn || article.titleIt) : language === "es" ? (article.titleEs || article.titleIt) : article.titleIt; const body = language === "en" ? (article.bodyEn || article.bodyIt) : language === "es" ? (article.bodyEs || article.bodyIt) : article.bodyIt; return <article key={article.id} className="nutrition-article"><h3>{title}</h3><p>{body}</p>{article.imageUrl ? <img src={article.imageUrl} alt={title} /> : null}</article>; })}</div> : null}
+            </div>}
+            <a className="arrow-link nutrition-all-articles" href="/nutrition">{t("allArticles")} <ArrowUpRight size={15} /></a>
           </div>
         </section>
 
@@ -404,6 +456,7 @@ export default function Home() {
           </a>
           <div className="footer__links">
             <a href="#progetto">{t("project")}</a>
+            <a href="/nutrition">{t("nutrition")}</a>
             <a href="#catalogo">{t("catalog")}</a>
             <a href="#contatti">{t("contact")}</a>
           </div>
@@ -414,7 +467,7 @@ export default function Home() {
         </div>
         <div className="container footer__bottom">
           <span>© {new Date().getFullYear()} Renacer · Ibiza</span>
-          <span>piante, mani e tempo · <a href="https://barbarabotan-7xc3xthl.manus.space/admin">Gestione catalogo</a></span>
+          <span>piante, mani e tempo · <a href="/admin">Gestione catalogo</a></span>
         </div>
       </footer>
     </div>

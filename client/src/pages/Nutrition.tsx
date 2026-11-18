@@ -1,0 +1,153 @@
+import { useEffect, useMemo, useState } from "react";
+import { useRoute } from "wouter";
+import { ArrowLeft, ArrowRight, BookOpen, Languages, Leaf } from "lucide-react";
+
+type Language = "it" | "en" | "es";
+type Article = {
+  id: number;
+  slug: string;
+  titleIt: string;
+  bodyIt: string;
+  titleEn: string | null;
+  bodyEn: string | null;
+  titleEs: string | null;
+  bodyEs: string | null;
+  imageUrl: string | null;
+  createdAt?: string;
+  isPublished: number;
+};
+
+const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
+const supabasePublishableKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
+const languageCopy: Record<Language, Record<string, string>> = {
+  it: {
+    home: "Home", catalog: "La collezione", eyebrow: "Journal Renacer", title: "Nutrizione & benessere", lead: "Appunti, pratiche e riflessioni per una cura che parte da dentro e si intreccia con la vita quotidiana.",
+    learn: "Leggi di più", back: "Tutti gli articoli", empty: "Gli articoli arriveranno presto.", loading: "Caricamento degli articoli…", missing: "Questo articolo non è disponibile.", notice: "Ogni percorso è personale: queste note hanno valore informativo e non sostituiscono il parere di un professionista sanitario.",
+  },
+  en: {
+    home: "Home", catalog: "The collection", eyebrow: "Renacer Journal", title: "Nutrition & wellbeing", lead: "Notes, practices and reflections on care that begins within and meets everyday life.",
+    learn: "Learn more", back: "All articles", empty: "Articles will be here soon.", loading: "Loading articles…", missing: "This article is not available.", notice: "Every path is personal: these notes are for information and do not replace advice from a healthcare professional.",
+  },
+  es: {
+    home: "Inicio", catalog: "La colección", eyebrow: "Journal Renacer", title: "Nutrición y bienestar", lead: "Notas, prácticas y reflexiones para un cuidado que empieza dentro y se entrelaza con la vida cotidiana.",
+    learn: "Leer más", back: "Todos los artículos", empty: "Pronto encontrarás artículos aquí.", loading: "Cargando artículos…", missing: "Este artículo no está disponible.", notice: "Cada camino es personal: estas notas son informativas y no sustituyen el consejo de un profesional sanitario.",
+  },
+};
+
+function initialLanguage(): Language {
+  const stored = window.localStorage.getItem("renacer_language");
+  if (stored === "it" || stored === "en" || stored === "es") return stored;
+  const browser = (navigator.language || "it").slice(0, 2);
+  return browser === "en" || browser === "es" ? browser : "it";
+}
+
+function titleFor(article: Article, language: Language) {
+  return (language === "en" ? article.titleEn : language === "es" ? article.titleEs : article.titleIt)?.trim() || article.titleIt;
+}
+
+function bodyFor(article: Article, language: Language) {
+  return (language === "en" ? article.bodyEn : language === "es" ? article.bodyEs : article.bodyIt)?.trim() || article.bodyIt;
+}
+
+function excerpt(text: string, words = 42) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const parts = normalized.split(" ");
+  return parts.length > words ? `${parts.slice(0, words).join(" ")}…` : normalized;
+}
+
+function paragraphs(text: string) {
+  return text.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
+}
+
+export default function Nutrition() {
+  const [matches, params] = useRoute("/nutrition/:slug");
+  const slug = matches ? params?.slug : undefined;
+  const [language, setLanguage] = useState<Language>(initialLanguage);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const text = languageCopy[language];
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${supabaseUrl}/rest/v1/nutrition_articles?select=id,slug,titleIt,bodyIt,titleEn,bodyEn,titleEs,bodyEs,imageUrl,createdAt,isPublished&isPublished=eq.1&order=createdAt.desc`, {
+      headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` },
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Articles unavailable");
+        return response.json();
+      })
+      .then((items: Article[]) => { if (!cancelled) setArticles(items); })
+      .catch(() => { if (!cancelled) setFailed(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const article = useMemo(() => articles.find((item) => item.slug === slug), [articles, slug]);
+  useEffect(() => {
+    window.localStorage.setItem("renacer_language", language);
+    document.documentElement.lang = language;
+    document.title = article ? `${titleFor(article, language)} · Renacer Ibiza` : `${text.title} · Renacer Ibiza`;
+    return () => { document.documentElement.lang = "it"; };
+  }, [article, language, text.title]);
+
+  return (
+    <div className="site-shell nutrition-page">
+      <div className="topline"><div className="container topline__inner"><span>Renacer · Ibiza</span><span className="topline__note"><Leaf size={13} /> {text.eyebrow}</span></div></div>
+      <header className="site-header">
+        <div className="container header__inner">
+          <a className="brand" href="/" aria-label="Renacer Ibiza, home">
+            <img className="brand-logo-image" src="/images/logo-woman.png" alt="" />
+            <span className="brand__text"><strong>Renacer</strong><small>Ibiza · cura artigianale</small></span>
+          </a>
+          <nav className="nutrition-nav" aria-label="Navigation">
+            <a href="/">{text.home}</a><a href="/#catalogo">{text.catalog}</a>
+            <div className="nutrition-language" aria-label="Language">
+              <Languages size={14} />
+              {(["it", "en", "es"] as const).map((option) => (
+                <button key={option} type="button" className={language === option ? "is-active" : ""} onClick={() => setLanguage(option)}>{option.toUpperCase()}</button>
+              ))}
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      <main className="nutrition-main container">
+        {!slug ? (
+          <>
+            <section className="nutrition-hero">
+              <div className="nutrition-hero__mark"><BookOpen size={24} strokeWidth={1.3} /><span>Renacer<br />Ibiza</span></div>
+              <div><span className="section-eyebrow"><Leaf size={14} /> {text.eyebrow}</span><h1>{text.title}</h1><p>{text.lead}</p></div>
+            </section>
+            {loading ? <p className="nutrition-state">{text.loading}</p> : failed ? <p className="nutrition-state">{text.empty}</p> : articles.length === 0 ? <p className="nutrition-state">{text.empty}</p> : (
+              <div className="journal-grid">
+                {articles.map((item, index) => (
+                  <article className="journal-card" key={item.id}>
+                    <a className="journal-card__image" href={`/nutrition/${encodeURIComponent(item.slug)}`} aria-label={`${text.learn}: ${titleFor(item, language)}`}>
+                      {item.imageUrl ? <img src={item.imageUrl} alt={titleFor(item, language)} loading="lazy" /> : <span className="journal-card__placeholder"><Leaf size={31} /></span>}
+                      <span className="journal-card__index">{String(index + 1).padStart(2, "0")}</span>
+                    </a>
+                    <div className="journal-card__body"><span className="journal-card__eyebrow">{text.eyebrow}</span><h2>{titleFor(item, language)}</h2><p>{excerpt(bodyFor(item, language))}</p><a className="journal-card__link" href={`/nutrition/${encodeURIComponent(item.slug)}`}>{text.learn} <ArrowRight size={15} /></a></div>
+                  </article>
+                ))}
+              </div>
+            )}
+            <p className="nutrition-disclaimer">{text.notice}</p>
+          </>
+        ) : loading ? (
+          <p className="nutrition-state">{text.loading}</p>
+        ) : !article ? (
+          <section className="nutrition-missing"><BookOpen size={25} /><h1>{text.missing}</h1><a className="journal-card__link" href="/nutrition"><ArrowLeft size={15} /> {text.back}</a></section>
+        ) : (
+          <article className="nutrition-detail">
+            <a className="journal-card__link nutrition-detail__back" href="/nutrition"><ArrowLeft size={15} /> {text.back}</a>
+            {article.imageUrl ? <div className="nutrition-detail__image"><img src={article.imageUrl} alt={titleFor(article, language)} /></div> : null}
+            <div className="nutrition-detail__content"><span className="section-eyebrow"><BookOpen size={14} /> {text.eyebrow}</span><h1>{titleFor(article, language)}</h1><div className="nutrition-detail__body">{paragraphs(bodyFor(article, language)).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><p className="nutrition-disclaimer">{text.notice}</p></div>
+          </article>
+        )}
+      </main>
+
+      <footer className="site-footer nutrition-footer"><div className="container footer__bottom"><span>© {new Date().getFullYear()} Renacer · Ibiza</span><a href="/">Renacer Ibiza</a></div></footer>
+    </div>
+  );
+}

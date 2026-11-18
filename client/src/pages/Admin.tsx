@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpen,
   CheckCircle2,
   ExternalLink,
   FileText,
+  FolderTree,
   Image as ImageIcon,
   Info,
+  KeyRound,
   Leaf,
   LockKeyhole,
   LogOut,
@@ -15,7 +18,10 @@ import {
   Pencil,
   Plus,
   Save,
+  Settings2,
+  ShieldCheck,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 type Product = {
@@ -29,12 +35,14 @@ type Product = {
   priceCents: number;
   currency: string;
   category: string;
+  categorySlug: string;
   imageUrl: string | null;
   whatsappMessage: string | null;
   isPublished: number;
 };
 type Article = {
   id: number;
+  slug: string;
   titleIt: string;
   bodyIt: string;
   titleEn: string | null;
@@ -44,10 +52,25 @@ type Article = {
   imageUrl: string | null;
   isPublished: number;
 };
+type Category = {
+  slug: string;
+  nameIt: string;
+  nameEn: string;
+  nameEs: string;
+  isActive: boolean;
+};
+type ProductForm = { name: string; description: string; price: string; categorySlug: string; imageUrl: string; whatsappMessage: string };
+type ProductTranslations = { en: { name: string; description: string }; es: { name: string; description: string } };
+type ArticleForm = { title: string; body: string; imageUrl: string };
+type CategoryForm = { nameIt: string; nameEn: string; nameEs: string; isActive: boolean };
+type AdminSection = "overview" | "products" | "categories" | "articles" | "settings";
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
 const supabaseKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
-const adminFunctionUrl = supabaseUrl + "/functions/v1/renacer-admin";
+const adminFunctionUrl = `${supabaseUrl}/functions/v1/renacer-admin`;
+const blankProduct: ProductForm = { name: "", description: "", price: "", categorySlug: "", imageUrl: "", whatsappMessage: "" };
+const blankArticle: ArticleForm = { title: "", body: "", imageUrl: "" };
+const blankCategory: CategoryForm = { nameIt: "", nameEn: "", nameEs: "", isActive: true };
 
 class AdminRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -62,7 +85,7 @@ async function adminRequest(action: string, payload: Record<string, unknown> = {
     method: "POST",
     headers: {
       apikey: supabaseKey,
-      Authorization: "Bearer " + supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
       "Content-Type": "application/json",
       "x-renacer-token": token,
     },
@@ -79,9 +102,6 @@ function hasValidAdminSession() {
   return Number.isFinite(expiry) && expiry > Date.now();
 }
 
-const blankProduct = { name: "", description: "", price: "", category: "Altro", imageUrl: "", whatsappMessage: "" };
-const blankArticle = { title: "", body: "", imageUrl: "" };
-
 function AdminHeader({ onLogout }: { onLogout?: () => void }) {
   return (
     <header className="admin-header">
@@ -89,26 +109,31 @@ function AdminHeader({ onLogout }: { onLogout?: () => void }) {
         <ArrowLeft size={15} />
         <span>Torna al sito</span>
       </Link>
-      <div className="admin-brand">
+      <Link className="admin-brand" href="/admin" aria-label="Dashboard Renacer">
         <span className="admin-brand__mark"><Leaf size={17} /></span>
-        <span>
-          <strong>Renacer</strong>
-          <small>Area riservata</small>
-        </span>
-      </div>
+        <span><strong>Renacer</strong><small>Area riservata · Ibiza</small></span>
+      </Link>
       {onLogout ? (
         <button className="admin-lock" type="button" onClick={onLogout}>
-          <LogOut size={14} />
-          <span>Esci</span>
+          <LogOut size={14} /><span>Disconnetti</span>
         </button>
-      ) : (
-        <span className="admin-status"><span /> Accesso protetto</span>
-      )}
+      ) : <span className="admin-status"><span /> Accesso protetto</span>}
     </header>
   );
 }
 
+const navItems: { id: AdminSection; label: string; icon: typeof Package; description: string }[] = [
+  { id: "overview", label: "Panoramica", icon: Sparkles, description: "Lo spazio di lavoro" },
+  { id: "products", label: "Prodotti", icon: Package, description: "Schede e pubblicazione" },
+  { id: "categories", label: "Categorie", icon: FolderTree, description: "Organizza i rituali" },
+  { id: "articles", label: "Articoli", icon: BookOpen, description: "Journal Nutrition" },
+  { id: "settings", label: "PIN e sicurezza", icon: Settings2, description: "Accesso personale" },
+];
+
 export default function Admin() {
+  const [location] = useLocation();
+  const sectionPart = location.replace(/^\/admin\/?/, "").split("/")[0];
+  const section: AdminSection = ["products", "categories", "articles", "settings"].includes(sectionPart) ? sectionPart as AdminSection : "overview";
   const [pin, setPin] = useState("");
   const [unlocked, setUnlocked] = useState(hasValidAdminSession);
   const [pinError, setPinError] = useState("");
@@ -116,18 +141,32 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [product, setProduct] = useState(blankProduct);
-  const [article, setArticle] = useState(blankArticle);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [product, setProduct] = useState<ProductForm>(blankProduct);
+  const [article, setArticle] = useState<ArticleForm>(blankArticle);
+  const [categoryForm, setCategoryForm] = useState<CategoryForm>(blankCategory);
+  const [productTranslations, setProductTranslations] = useState<ProductTranslations | null>(null);
+  const [translationSource, setTranslationSource] = useState("");
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [editingArticle, setEditingArticle] = useState<number | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [imageUploading, setImageUploading] = useState<"product" | "article" | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+
+  const activeCategories = useMemo(() => categories.filter((item) => item.isActive), [categories]);
+  const categoryName = (slug: string, fallback = "Altro") => {
+    return categories.find((item) => item.slug === slug)?.nameIt || fallback;
+  };
 
   const load = async () => {
     const data = await adminRequest("list");
     setProducts(Array.isArray(data.products) ? data.products : []);
     setArticles(Array.isArray(data.articles) ? data.articles : []);
+    setCategories(Array.isArray(data.categories) ? data.categories : []);
   };
 
   const logout = (expired = false) => {
@@ -151,6 +190,7 @@ export default function Admin() {
       if (typeof result.token !== "string" || !result.token) throw new Error("Token di sessione non ricevuto.");
       sessionStorage.setItem("renacer_admin_token", result.token);
       setUnlocked(true);
+      setPin("");
     } catch (loginError) {
       setPinError(loginError instanceof AdminRequestError && loginError.status === 401
         ? "Codice PIN non valido."
@@ -161,14 +201,8 @@ export default function Admin() {
   const uploadImage = async (file: File | undefined, entity: "product" | "article") => {
     if (!file) return;
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
-    if (!allowedTypes.includes(file.type)) {
-      setError("Formato non supportato. Usa JPG, PNG, WebP, GIF o AVIF.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("L'immagine deve avere una dimensione massima di 10 MB.");
-      return;
-    }
+    if (!allowedTypes.includes(file.type)) { setError("Formato non supportato. Usa JPG, PNG, WebP, GIF o AVIF."); return; }
+    if (file.size > 10 * 1024 * 1024) { setError("L'immagine deve avere una dimensione massima di 10 MB."); return; }
     setImageUploading(entity);
     setError("");
     setNotice("");
@@ -180,14 +214,14 @@ export default function Admin() {
       const token = sessionStorage.getItem("renacer_admin_token") || "";
       const response = await fetch(adminFunctionUrl, {
         method: "POST",
-        headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey, "x-renacer-token": token },
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, "x-renacer-token": token },
         body: form,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new AdminRequestError(data.error || "Caricamento immagine non riuscito.", response.status);
       if (typeof data.url !== "string") throw new Error("Il caricamento non ha restituito l'indirizzo dell'immagine.");
-      if (entity === "product") setProduct((current) => ({ ...current, imageUrl: data.url }));
-      else setArticle((current) => ({ ...current, imageUrl: data.url }));
+      if (entity === "product") setProduct((value) => ({ ...value, imageUrl: data.url }));
+      else setArticle((value) => ({ ...value, imageUrl: data.url }));
       setNotice("Immagine caricata. Salva il contenuto per pubblicarla.");
     } catch (uploadError) {
       if (uploadError instanceof AdminRequestError && uploadError.status === 401) logout(true);
@@ -214,34 +248,29 @@ export default function Admin() {
     }
   };
 
-  const translate = async () => {
-    if (!product.name.trim() || !product.description.trim()) {
-      setError("Inserisci prima nome e descrizione in italiano.");
-      return;
-    }
-    setBusy(true);
-    setError("");
+  const translateProduct = async () => {
+    if (!product.name.trim() || !product.description.trim()) { setError("Inserisci prima nome e descrizione in italiano."); return; }
+    setBusy(true); setError(""); setNotice("");
     try {
-      const result = await adminRequest("translate", { sourceLanguage: "it", name: product.name, description: product.description });
-      if (!result?.it || !result?.en || !result?.es) throw new Error();
-      setNotice("Traduzioni automatiche pronte per il controllo.");
+      const translated = await adminRequest("translate", { sourceLanguage: "it", name: product.name, description: product.description });
+      if (!translated?.en || !translated?.es) throw new Error("Traduzioni incomplete.");
+      setProductTranslations(translated);
+      setTranslationSource(`${product.name}\u0000${product.description}`);
+      setNotice("Traduzioni automatiche pronte: verranno salvate insieme al prodotto.");
     } catch (translationError) {
       if (translationError instanceof AdminRequestError && translationError.status === 401) logout(true);
-      else setError("Traduzione automatica non disponibile. Riprova tra poco.");
-    } finally {
-      setBusy(false);
-    }
+      else setError(translationError instanceof Error ? translationError.message : "Traduzione automatica non disponibile.");
+    } finally { setBusy(false); }
   };
 
   const saveProduct = async () => {
-    if (!product.name.trim() || !product.description.trim()) {
-      setError("Nome e descrizione in italiano sono obbligatori.");
-      return;
-    }
-    setBusy(true);
-    setError("");
+    if (!product.name.trim() || !product.description.trim()) { setError("Nome e descrizione in italiano sono obbligatori."); return; }
+    const categorySlug = product.categorySlug || activeCategories[0]?.slug || "altro";
+    const chosenCategory = categories.find((item) => item.slug === categorySlug);
+    setBusy(true); setError(""); setNotice("");
     try {
-      const translated = await adminRequest("translate", { sourceLanguage: "it", name: product.name, description: product.description }).catch(() => null);
+      const currentSource = `${product.name}\u0000${product.description}`;
+      const translated = translationSource === currentSource && productTranslations ? productTranslations : await adminRequest("translate", { sourceLanguage: "it", name: product.name, description: product.description }).catch(() => null);
       const data = {
         sourceLanguage: "it",
         nameIt: product.name.trim(),
@@ -250,59 +279,122 @@ export default function Admin() {
         descriptionEn: translated?.en?.description || null,
         nameEs: translated?.es?.name || null,
         descriptionEs: translated?.es?.description || null,
-        priceCents: Math.round((Number(product.price) || 0) * 100),
+        priceCents: Math.round((Number(product.price.replace(",", ".")) || 0) * 100),
         currency: "EUR",
-        category: product.category.trim() || "Altro",
+        categorySlug,
+        categoryName: chosenCategory?.nameIt || "Altro",
         imageUrl: product.imageUrl.trim() || null,
         whatsappMessage: product.whatsappMessage.trim() || null,
-        isPublished: 1,
+        isPublished: editingProduct ? (products.find((item) => item.id === editingProduct)?.isPublished ?? 0) : 1,
       };
-      const response = await adminRequest(editingProduct ? "update" : "create", { id: editingProduct, product: { ...data, slug: editingProduct ? undefined : product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now() } });
-      if (!response) throw new Error("Salvataggio fallito");
+      await adminRequest(editingProduct ? "update" : "create", { id: editingProduct, product: data });
       await load();
-      setProduct(blankProduct);
-      setEditingProduct(null);
-      setNotice("Prodotto salvato e pubblicato.");
+      setProduct(blankProduct); setEditingProduct(null); setProductTranslations(null); setTranslationSource("");
+      setNotice("Prodotto salvato e pubblicato nella categoria selezionata.");
     } catch (saveError) {
       if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
-      else setError(saveError instanceof Error ? saveError.message : "Salvataggio fallito");
-    } finally {
-      setBusy(false);
-    }
+      else setError(saveError instanceof Error ? saveError.message : "Salvataggio prodotto non riuscito.");
+    } finally { setBusy(false); }
+  };
+
+  const beginProductEdit = (item: Product) => {
+    setEditingProduct(item.id);
+    setProductTranslations(null); setTranslationSource("");
+    const matchingCategory = categories.find((category) => category.slug === item.categorySlug || category.nameIt === item.category);
+    setProduct({ name: item.nameIt, description: item.descriptionIt, price: (item.priceCents / 100).toFixed(2), categorySlug: matchingCategory?.slug || item.categorySlug || "altro", imageUrl: item.imageUrl || "", whatsappMessage: item.whatsappMessage || "" });
+    setError(""); setNotice("");
   };
 
   const saveArticle = async () => {
-    if (!article.title.trim() || !article.body.trim()) {
-      setError("Titolo e testo dell'articolo sono obbligatori.");
-      return;
-    }
-    setBusy(true);
-    setError("");
+    if (!article.title.trim() || !article.body.trim()) { setError("Titolo e testo dell'articolo sono obbligatori."); return; }
+    setBusy(true); setError(""); setNotice("");
     try {
       const translated = await adminRequest("translate", { sourceLanguage: "it", name: article.title, description: article.body }).catch(() => null);
       const data = {
-        slug: article.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now(),
-        titleIt: article.title.trim(),
-        bodyIt: article.body.trim(),
-        titleEn: translated?.en?.name || null,
-        bodyEn: translated?.en?.description || null,
-        titleEs: translated?.es?.name || null,
-        bodyEs: translated?.es?.description || null,
+        titleIt: article.title.trim(), bodyIt: article.body.trim(),
+        titleEn: translated?.en?.name || null, bodyEn: translated?.en?.description || null,
+        titleEs: translated?.es?.name || null, bodyEs: translated?.es?.description || null,
         imageUrl: article.imageUrl.trim() || null,
-        isPublished: 1,
+        isPublished: editingArticle ? (articles.find((item) => item.id === editingArticle)?.isPublished ?? 0) : 1,
       };
-      const result = await adminRequest(editingArticle ? "article_update" : "article_create", { id: editingArticle, article: data });
-      if (!result) throw new Error("Salvataggio articolo fallito");
-      await load();
-      setArticle(blankArticle);
-      setEditingArticle(null);
-      setNotice("Articolo Nutrition pubblicato.");
+      await adminRequest(editingArticle ? "article_update" : "article_create", { id: editingArticle, article: data });
+      await load(); setArticle(blankArticle); setEditingArticle(null);
+      setNotice("Articolo salvato nella sezione Nutrition.");
     } catch (saveError) {
       if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
-      else setError(saveError instanceof Error ? saveError.message : "Salvataggio articolo fallito");
-    } finally {
-      setBusy(false);
+      else setError(saveError instanceof Error ? saveError.message : "Salvataggio articolo non riuscito.");
+    } finally { setBusy(false); }
+  };
+
+  const beginArticleEdit = (item: Article) => {
+    setEditingArticle(item.id);
+    setArticle({ title: item.titleIt, body: item.bodyIt, imageUrl: item.imageUrl || "" });
+    setError(""); setNotice("");
+  };
+
+  const saveCategory = async () => {
+    const data = { nameIt: categoryForm.nameIt.trim(), nameEn: categoryForm.nameEn.trim(), nameEs: categoryForm.nameEs.trim(), isActive: categoryForm.isActive };
+    if (!data.nameIt || !data.nameEn || !data.nameEs) { setError("Completa i nomi della categoria in italiano, inglese e spagnolo."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await adminRequest(editingCategory ? "category_update" : "category_create", { slug: editingCategory, category: data });
+      await load(); setCategoryForm(blankCategory); setEditingCategory(null);
+      setNotice(editingCategory ? "Categoria aggiornata. I prodotti restano collegati al suo slug." : "Nuova categoria creata.");
+    } catch (saveError) {
+      if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
+      else setError(saveError instanceof Error ? saveError.message : "Salvataggio categoria non riuscito.");
+    } finally { setBusy(false); }
+  };
+
+  const beginCategoryEdit = (item: Category) => {
+    setEditingCategory(item.slug);
+    setCategoryForm({ nameIt: item.nameIt, nameEn: item.nameEn, nameEs: item.nameEs, isActive: item.isActive });
+    setError(""); setNotice("");
+  };
+
+  const deleteCategory = async (item: Category) => {
+    if (!window.confirm(`Eliminare la categoria “${item.nameIt}”? Puoi eliminare solo le categorie senza prodotti assegnati.`)) return;
+    setError(""); setNotice("");
+    try {
+      await adminRequest("category_delete", { slug: item.slug });
+      await load();
+      if (editingCategory === item.slug) { setCategoryForm(blankCategory); setEditingCategory(null); }
+      setNotice("Categoria eliminata.");
+    } catch (deleteError) {
+      if (deleteError instanceof AdminRequestError && deleteError.status === 401) logout(true);
+      else setError(deleteError instanceof Error ? deleteError.message : "Categoria non eliminata.");
     }
+  };
+
+  const toggleCategory = async (item: Category) => {
+    setError(""); setNotice("");
+    try {
+      await adminRequest("category_update", { slug: item.slug, category: { isActive: !item.isActive } });
+      await load();
+      setNotice(item.isActive ? "Categoria nascosta dal catalogo pubblico." : "Categoria attivata.");
+    } catch (toggleError) {
+      if (toggleError instanceof AdminRequestError && toggleError.status === 401) logout(true);
+      else setError(toggleError instanceof Error ? toggleError.message : "Stato categoria non aggiornato.");
+    }
+  };
+
+  const changePin = async () => {
+    if (!/^\d{6,12}$/.test(newPin)) { setError("Il nuovo PIN deve contenere da 6 a 12 cifre."); return; }
+    if (newPin !== confirmPin) { setError("I due nuovi PIN non coincidono."); return; }
+    if (newPin === currentPin) { setError("Il nuovo PIN deve essere diverso da quello attuale."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await adminRequest("change_pin", { currentPin, newPin });
+      sessionStorage.removeItem("renacer_admin_token");
+      setUnlocked(false);
+      setCurrentPin(""); setNewPin(""); setConfirmPin("");
+      setPinError("PIN aggiornato. Accedi di nuovo con il nuovo codice.");
+    } catch (pinErrorValue) {
+      if (pinErrorValue instanceof AdminRequestError && pinErrorValue.status === 401) {
+        if (pinErrorValue.message.includes("attuale")) setError(pinErrorValue.message);
+        else logout(true);
+      } else setError(pinErrorValue instanceof Error ? pinErrorValue.message : "Impossibile aggiornare il PIN.");
+    } finally { setBusy(false); }
   };
 
   if (!unlocked) {
@@ -312,9 +404,9 @@ export default function Admin() {
         <main className="admin-main admin-login admin-pin-login">
           <span className="admin-eyebrow"><LockKeyhole size={13} /> Area privata</span>
           <h1>Pronta a<br /><em>ripartire.</em></h1>
-          <p>Accedi alla gestione di Renacer per pubblicare prodotti e articoli. Il sito pubblico resta sempre aggiornato con ciò che salvi qui.</p>
+          <p>Accedi alla gestione di Renacer per curare prodotti, categorie e articoli. Il sito pubblico resta sempre aggiornato con ciò che salvi qui.</p>
           <form className="admin-pin-form" onSubmit={(event) => { event.preventDefault(); void login(); }}>
-            <label>Codice PIN<input type="password" value={pin} onChange={(event) => setPin(event.target.value)} autoFocus inputMode="numeric" /></label>
+            <label>Codice PIN<input type="password" value={pin} onChange={(event) => setPin(event.target.value)} autoFocus inputMode="numeric" autoComplete="current-password" /></label>
             {pinError && <p className="admin-error">{pinError}</p>}
             <button className="admin-primary" type="submit"><LockKeyhole size={14} /> Entra nell'area</button>
           </form>
@@ -323,69 +415,116 @@ export default function Admin() {
     );
   }
 
+  const publishedProducts = products.filter((item) => item.isPublished === 1).length;
+  const publishedArticles = articles.filter((item) => item.isPublished === 1).length;
+  const sectionMeta = navItems.find((item) => item.id === section) || navItems[0];
+
   return (
-    <div className="admin-shell">
-      <AdminHeader onLogout={logout} />
-      <main className="admin-main">
-        <div className="admin-intro">
-          <div>
-            <span className="admin-eyebrow"><Sparkles size={13} /> Studio Renacer</span>
-            <h1>Gestione<br /><em>del catalogo.</em></h1>
-            <p>Un piccolo spazio per curare i prodotti, raccontare il progetto e mantenere il catalogo sempre vivo. Scrivi in italiano: le traduzioni per i visitatori vengono preparate automaticamente.</p>
-          </div>
-          <div className="admin-intro__note"><Info size={16} /><span><strong>Consiglio</strong><br />Completa nome, descrizione e prezzo prima di pubblicare.</span></div>
-        </div>
+    <div className="admin-shell admin-shell--workspace">
+      <AdminHeader onLogout={() => logout()} />
+      <div className="admin-workspace">
+        <aside className="admin-sidebar">
+          <div className="admin-sidebar__intro"><span>Studio Renacer</span><strong>Spazio di<br /><em>cura.</em></strong><p>Organizza il catalogo, una cosa alla volta.</p></div>
+          <nav className="admin-sidebar__nav" aria-label="Sezioni amministrazione">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const href = item.id === "overview" ? "/admin" : `/admin/${item.id}`;
+              return <Link key={item.id} className={section === item.id ? "admin-nav-item is-active" : "admin-nav-item"} href={href}><span className="admin-nav-item__icon"><Icon size={17} /></span><span><strong>{item.label}</strong><small>{item.description}</small></span>{section === item.id ? <ArrowRight size={14} /> : null}</Link>;
+            })}
+          </nav>
+          <div className="admin-sidebar__footer"><ShieldCheck size={16} /><span>Area protetta<br /><strong>Renacer · Ibiza</strong></span></div>
+        </aside>
 
-        {error && <p className="admin-error admin-alert"><Info size={14} /> {error}</p>}
-        {notice && <p className="admin-success admin-alert"><CheckCircle2 size={14} /> {notice}</p>}
+        <main className="admin-content">
+          <div className="admin-content__topline"><span>{sectionMeta.description}</span><a href="/" target="_blank" rel="noreferrer">Apri il sito <ExternalLink size={13} /></a></div>
+          <div className="admin-page-heading"><div><span className="admin-eyebrow"><Sparkles size={13} /> {sectionMeta.label}</span><h1>{section === "overview" ? <>Gestione<br /><em>con calma.</em></> : section === "products" ? <>La galleria<br /><em>dei prodotti.</em></> : section === "categories" ? <>Organizza<br /><em>i rituali.</em></> : section === "articles" ? <>Nutrition<br /><em>journal.</em></> : <>Impostazioni<br /><em>personali.</em></>}</h1></div><p>{section === "overview" ? "Uno spazio ordinato per raccontare i prodotti e le storie di Renacer. Ogni area ha la sua sezione: semplice da trovare, semplice da aggiornare." : section === "products" ? "Crea le schede, scegli la categoria e carica le immagini. I prodotti salvati vengono pubblicati nel catalogo." : section === "categories" ? "Crea le categorie dei tuoi rituali, aggiorna i nomi o nascondi quelle che non usi. Lo slug stabile mantiene i prodotti collegati anche se cambi il nome." : section === "articles" ? "Scrivi gli articoli Nutrition: in homepage appare solo un estratto, mentre il testo completo vive nella sua pagina dedicata." : "Cambia il PIN quando vuoi. Dopo l'aggiornamento la sessione termina e dovrai accedere con il nuovo codice."}</p></div>
 
-        <section className="admin-card">
-          <div className="admin-card__top"><div><span className="admin-card__number">01 / CATALOGO</span><h2>{editingProduct ? "Modifica prodotto" : "Nuovo prodotto"}</h2></div><span className="admin-badge"><Package size={12} /> Pubblicazione immediata</span></div>
-          <div className="admin-language-tabs"><button className="is-active" type="button"><Leaf size={13} /> Italiano</button><button type="button" disabled>EN <small>automatico</small></button><button type="button" disabled>ES <small>automatico</small></button></div>
-          <div className="admin-form-grid">
-            <label>Nome del prodotto<input value={product.name} onChange={(event) => setProduct({ ...product, name: event.target.value })} placeholder="Es. Olio botanico" /></label>
-            <label>Descrizione in italiano<textarea value={product.description} onChange={(event) => setProduct({ ...product, description: event.target.value })} rows={5} placeholder="Racconta il prodotto con parole semplici..." /></label>
-          </div>
-          <div className="admin-extra-grid">
-            <label>Prezzo (EUR)<input type="number" min="0" step="0.01" value={product.price} onChange={(event) => setProduct({ ...product, price: event.target.value })} placeholder="0,00" /></label>
-            <label>Categoria<select value={product.category} onChange={(event) => setProduct({ ...product, category: event.target.value })}><option>Altro</option><option>Cura del viso</option><option>Cura del corpo</option><option>Oli e balsami</option><option>Regali</option><option>Novità</option></select></label>
-          </div>
-          <div className="admin-form-grid admin-form-grid--compact">
-            <label><span>Messaggio WhatsApp opzionale</span><input value={product.whatsappMessage} onChange={(event) => setProduct({ ...product, whatsappMessage: event.target.value })} placeholder="Es. Ciao Barbara, vorrei saperne di più..." /></label>
-            <div className="admin-extra-grid admin-image-grid">
-              <div className="admin-upload-label">
-                <label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "product" ? "Caricamento immagine..." : product.imageUrl ? "Sostituisci immagine prodotto" : "Carica immagine prodotto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "product"); event.currentTarget.value = ""; }} /></span></label>
-                <small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small>
+          {error && <p className="admin-error admin-alert"><Info size={14} /> {error}</p>}
+          {notice && <p className="admin-success admin-alert"><CheckCircle2 size={14} /> {notice}</p>}
+
+          {section === "overview" && (
+            <section className="admin-overview">
+              <div className="admin-overview__stats">
+                <article><span><Package size={16} /> Prodotti pubblicati</span><strong>{publishedProducts}<small> / {products.length}</small></strong></article>
+                <article><span><FolderTree size={16} /> Categorie attive</span><strong>{activeCategories.length}<small> / {categories.length}</small></strong></article>
+                <article><span><BookOpen size={16} /> Articoli online</span><strong>{publishedArticles}<small> / {articles.length}</small></strong></article>
               </div>
-              <div className="admin-image-preview">{product.imageUrl ? <><img src={product.imageUrl} alt="Anteprima immagine prodotto" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine prodotto" onClick={() => setProduct({ ...product, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div>
-            </div>
-          </div>
-          <div className="admin-card__bottom"><p><span className="admin-dot" /> I campi in italiano sono la fonte del catalogo</p><div className="admin-actions"><button className="admin-secondary" type="button" onClick={() => void translate()} disabled={busy}><Sparkles size={14} /> Prepara traduzioni</button><button className="admin-primary" type="button" onClick={() => void saveProduct()} disabled={busy}>{editingProduct ? <Pencil size={14} /> : <Save size={14} />}{editingProduct ? "Aggiorna prodotto" : "Salva e pubblica"}</button></div></div>
-        </section>
+              <div className="admin-shortcuts">
+                <Link href="/admin/products" className="admin-shortcut"><span className="admin-shortcut__icon"><Package size={20} /></span><div><small>01 · Catalogo</small><strong>Gestisci i prodotti</strong><p>Aggiungi immagini, prezzi e categoria.</p></div><ArrowRight size={18} /></Link>
+                <Link href="/admin/categories" className="admin-shortcut"><span className="admin-shortcut__icon"><FolderTree size={20} /></span><div><small>02 · Organizzazione</small><strong>Modifica le categorie</strong><p>Assegna ogni prodotto al suo rituale.</p></div><ArrowRight size={18} /></Link>
+                <Link href="/admin/articles" className="admin-shortcut"><span className="admin-shortcut__icon"><BookOpen size={20} /></span><div><small>03 · Journal</small><strong>Scrivi un articolo</strong><p>Anteprime brevi e pagine complete.</p></div><ArrowRight size={18} /></Link>
+                <Link href="/admin/settings" className="admin-shortcut"><span className="admin-shortcut__icon"><KeyRound size={20} /></span><div><small>04 · Sicurezza</small><strong>Cambia il PIN</strong><p>Impostazione separata e protetta.</p></div><ArrowRight size={18} /></Link>
+              </div>
+              <div className="admin-overview__note"><Leaf size={17} /><p><strong>Una piccola nota</strong><br />Scrivi in italiano: le traduzioni per i visitatori vengono preparate automaticamente, poi puoi controllarle nella scheda prima di salvare.</p></div>
+            </section>
+          )}
 
-        <section className="admin-card admin-article-card">
-          <div className="admin-card__top"><div><span className="admin-card__number">02 / NUTRIZIONE</span><h2>{editingArticle ? "Modifica articolo" : "Nuovo articolo"}</h2></div><span className="admin-badge"><BookOpen size={12} /> Journal Renacer</span></div>
-          <div className="admin-form-grid"><label>Titolo dell'articolo<input value={article.title} onChange={(event) => setArticle({ ...article, title: event.target.value })} placeholder="Es. Una cura più ampia" /></label><label>Testo dell'articolo<textarea value={article.body} onChange={(event) => setArticle({ ...article, body: event.target.value })} rows={6} placeholder="Scrivi una nota per la sezione Nutrizione..." /></label></div>
-          <div className="admin-extra-grid admin-image-grid">
-            <div className="admin-upload-label">
-              <label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "article" ? "Caricamento immagine..." : article.imageUrl ? "Sostituisci immagine articolo" : "Carica immagine articolo"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "article"); event.currentTarget.value = ""; }} /></span></label>
-              <small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small>
-            </div>
-            <div className="admin-image-preview">{article.imageUrl ? <><img src={article.imageUrl} alt="Anteprima immagine articolo" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine articolo" onClick={() => setArticle({ ...article, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div>
-          </div>
-          <div className="admin-card__bottom"><p><FileText size={14} /> Pubblicato nella sezione Nutrizione</p><button className="admin-primary" type="button" onClick={() => void saveArticle()} disabled={busy}>{editingArticle ? <Pencil size={14} /> : <Plus size={14} />}{editingArticle ? "Aggiorna articolo" : "Pubblica articolo"}</button></div>
-        </section>
+          {section === "products" && (
+            <>
+              <section className="admin-card">
+                <div className="admin-card__top"><div><span className="admin-card__number">01 / CATALOGO</span><h2>{editingProduct ? "Modifica prodotto" : "Crea un prodotto"}</h2></div><span className="admin-badge"><Package size={12} /> Pubblicazione immediata</span></div>
+                <div className="admin-language-tabs"><button className="is-active" type="button"><Leaf size={13} /> Italiano</button><button type="button" disabled>EN <small>automatico</small></button><button type="button" disabled>ES <small>automatico</small></button></div>
+                <div className="admin-form-grid"><label>Nome del prodotto<input value={product.name} onChange={(event) => { setProduct({ ...product, name: event.target.value }); setProductTranslations(null); setTranslationSource(""); }} placeholder="Es. Olio botanico" /></label><label>Descrizione in italiano<textarea value={product.description} onChange={(event) => { setProduct({ ...product, description: event.target.value }); setProductTranslations(null); setTranslationSource(""); }} rows={5} placeholder="Racconta il prodotto con parole semplici..." /></label></div>
+                <div className="admin-extra-grid admin-product-fields">
+                  <label>Prezzo (EUR)<input type="number" min="0" step="0.01" value={product.price} onChange={(event) => setProduct({ ...product, price: event.target.value })} placeholder="0,00" /></label>
+                  <label>Categoria<select value={product.categorySlug || activeCategories[0]?.slug || ""} onChange={(event) => setProduct({ ...product, categorySlug: event.target.value })}><option value="" disabled>Seleziona una categoria</option>{categories.find((item) => item.slug === product.categorySlug && !item.isActive) ? <option value={product.categorySlug} disabled>{categoryName(product.categorySlug)} · disattivata</option> : null}{activeCategories.map((item) => <option key={item.slug} value={item.slug}>{item.nameIt}</option>)}</select></label>
+                </div>
+                <div className="admin-form-grid admin-form-grid--compact"><label><span>Messaggio WhatsApp opzionale</span><input value={product.whatsappMessage} onChange={(event) => setProduct({ ...product, whatsappMessage: event.target.value })} placeholder="Es. Ciao Barbara, vorrei saperne di più..." /></label></div>
+                <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "product" ? "Caricamento immagine..." : product.imageUrl ? "Sostituisci immagine prodotto" : "Carica immagine prodotto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "product"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><div className="admin-image-preview">{product.imageUrl ? <><img src={product.imageUrl} alt="Anteprima immagine prodotto" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine prodotto" onClick={() => setProduct({ ...product, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div></div>
+                <div className="admin-card__bottom"><p><span className="admin-dot" /> La categoria viene collegata con uno slug stabile</p><div className="admin-actions"><button className="admin-secondary" type="button" onClick={() => void translateProduct()} disabled={busy}><Sparkles size={14} /> Prepara traduzioni</button><button className="admin-primary" type="button" onClick={() => void saveProduct()} disabled={busy}>{editingProduct ? <Pencil size={14} /> : <Save size={14} />}{editingProduct ? "Aggiorna prodotto" : "Salva e pubblica"}</button>{editingProduct ? <button className="admin-cancel" type="button" onClick={() => { setProduct(blankProduct); setEditingProduct(null); setProductTranslations(null); setTranslationSource(""); }}>Annulla</button> : null}</div></div>
+              </section>
+              <section className="admin-products">
+                <div className="admin-products__heading"><div><span className="admin-eyebrow"><Package size={13} /> Catalogo live</span><h2>Prodotti <small>({publishedProducts} online · {products.length} totali)</small></h2></div><a href="/#catalogo" target="_blank" rel="noreferrer" className="text-link">Apri la galleria <ExternalLink size={14} /></a></div>
+                {products.length === 0 ? <div className="admin-empty">Nessun prodotto presente. Aggiungi la prima scheda qui sopra.</div> : <div className="admin-products-list">{products.map((item) => <div className="admin-product-row" key={item.id}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={18} /></span>}<div><strong>{item.nameIt}</strong><span>{categoryName(item.categorySlug, item.category)} · {(item.priceCents / 100).toFixed(2)} EUR</span></div></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("product", item.id, item.isPublished !== 1)}>{statusUpdating === `product:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginProductEdit(item)}><Pencil size={15} /></button></div>)}</div>}
+              </section>
+            </>
+          )}
 
-        <section className="admin-products">
-          <div className="admin-products__heading"><div><span className="admin-eyebrow"><Package size={13} /> Catalogo live</span><h2>Prodotti <small>({products.filter((item) => item.isPublished === 1).length} pubblicati · {products.length} totali)</small></h2></div><a href="/" target="_blank" rel="noreferrer" className="text-link">Apri il sito <ExternalLink size={14} /></a></div>
-          {products.length === 0 ? <div className="admin-empty">Nessun prodotto pubblicato. Il catalogo è pronto per il primo rituale.</div> : <div className="admin-products-list">{products.map((item) => <div className="admin-product-row" key={item.id}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={18} /></span>}<div><strong>{item.nameIt}</strong><span>{item.category} · {(item.priceCents / 100).toFixed(2)} EUR</span></div></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("product", item.id, item.isPublished !== 1)}>{statusUpdating === `product:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => { setEditingProduct(item.id); setProduct({ name: item.nameIt, description: item.descriptionIt, price: String(item.priceCents / 100), category: item.category || "Altro", imageUrl: item.imageUrl || "", whatsappMessage: item.whatsappMessage || "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={15} /></button></div>)}</div>}
-        </section>
+          {section === "categories" && (
+            <>
+              <section className="admin-card category-form-card">
+                <div className="admin-card__top"><div><span className="admin-card__number">{editingCategory ? "MODIFICA" : "NUOVA CATEGORIA"}</span><h2>{editingCategory ? "Rinomina categoria" : "Crea nuovo"}</h2></div><span className="admin-badge"><FolderTree size={12} /> Organizza i rituali</span></div>
+                <div className="admin-category-form">
+                  <label>Nome in italiano<input value={categoryForm.nameIt} onChange={(event) => setCategoryForm({ ...categoryForm, nameIt: event.target.value })} placeholder="Es. Creme" /></label>
+                  <label>English<input value={categoryForm.nameEn} onChange={(event) => setCategoryForm({ ...categoryForm, nameEn: event.target.value })} placeholder="e.g. Creams" /></label>
+                  <label>Español<input value={categoryForm.nameEs} onChange={(event) => setCategoryForm({ ...categoryForm, nameEs: event.target.value })} placeholder="p. ej. Cremas" /></label>
+                  {editingCategory ? <label className="admin-checkbox-label"><input type="checkbox" checked={categoryForm.isActive} onChange={(event) => setCategoryForm({ ...categoryForm, isActive: event.target.checked })} /> Attiva nel catalogo</label> : null}
+                </div>
+                <div className="admin-card__bottom"><p><Info size={14} /> Le modifiche al nome non scollegano i prodotti assegnati</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void saveCategory()} disabled={busy}>{editingCategory ? <Save size={14} /> : <Plus size={14} />}{editingCategory ? "Salva modifiche" : "Crea categoria"}</button>{editingCategory ? <button className="admin-cancel" type="button" onClick={() => { setCategoryForm(blankCategory); setEditingCategory(null); }}>Annulla</button> : null}</div></div>
+              </section>
+              <section className="category-manager">
+                <div className="admin-products__heading"><div><span className="admin-eyebrow"><FolderTree size={13} /> Categorie del catalogo</span><h2>Organizza i rituali <small>({categories.length})</small></h2></div></div>
+                <div className="category-list">{categories.map((item, index) => <article className={!item.isActive ? "category-row is-inactive" : "category-row"} key={item.slug}><div className="category-row__number">{String(index + 1).padStart(2, "0")}</div><div className="category-row__name"><strong>{item.nameIt}</strong><span>{item.slug}</span></div><div className="category-row__translation"><span>{item.nameEn}</span><span>{item.nameEs}</span></div><span className={item.isActive ? "category-state is-active" : "category-state"}>{item.isActive ? "Attiva" : "Nascosta"}</span><div className="category-row__actions"><button className="admin-publish-toggle" type="button" onClick={() => void toggleCategory(item)}>{item.isActive ? "Nascondi" : "Attiva"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginCategoryEdit(item)}><Pencil size={15} /></button><button className="admin-delete" type="button" aria-label={`Elimina ${item.nameIt}`} onClick={() => void deleteCategory(item)}><Trash2 size={15} /></button></div></article>)}</div>
+                <p className="category-manager__hint"><Info size={14} /> Per eliminare una categoria, sposta prima i prodotti assegnati a un'altra categoria: così nessun prodotto resta senza collocazione.</p>
+              </section>
+            </>
+          )}
 
-        <section className="admin-products admin-articles-list">
-          <div className="admin-products__heading"><div><span className="admin-eyebrow"><BookOpen size={13} /> Journal live</span><h2>Articoli <small>({articles.filter((item) => item.isPublished === 1).length} pubblicati · {articles.length} totali)</small></h2></div></div>
-          {articles.length === 0 ? <div className="admin-empty">Non ci sono ancora articoli pubblicati.</div> : <div className="admin-products-list">{articles.map((item) => <div className="admin-product-row" key={item.id}><div><strong>{item.titleIt}</strong><span>Articolo Nutrition</span></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("article", item.id, item.isPublished !== 1)}>{statusUpdating === `article:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.titleIt}`} onClick={() => { setEditingArticle(item.id); setArticle({ title: item.titleIt, body: item.bodyIt, imageUrl: item.imageUrl || "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={15} /></button></div>)}</div>}
-        </section>
-      </main>
+          {section === "articles" && (
+            <>
+              <section className="admin-card admin-article-card">
+                <div className="admin-card__top"><div><span className="admin-card__number">01 / NUTRITION</span><h2>{editingArticle ? "Modifica articolo" : "Nuovo articolo"}</h2></div><span className="admin-badge"><BookOpen size={12} /> Una pagina per ogni storia</span></div>
+                <div className="admin-form-grid"><label>Titolo dell'articolo<input value={article.title} onChange={(event) => setArticle({ ...article, title: event.target.value })} placeholder="Es. Una cura più ampia" /></label><label>Testo dell'articolo<textarea value={article.body} onChange={(event) => setArticle({ ...article, body: event.target.value })} rows={8} placeholder="Scrivi una nota per la sezione Nutrition..." /></label></div>
+                <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "article" ? "Caricamento immagine..." : article.imageUrl ? "Sostituisci immagine articolo" : "Carica immagine articolo"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "article"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><div className="admin-image-preview">{article.imageUrl ? <><img src={article.imageUrl} alt="Anteprima immagine articolo" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine articolo" onClick={() => setArticle({ ...article, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div></div>
+                <div className="admin-card__bottom"><p><FileText size={14} /> In homepage appare solo un estratto con “Learn more”</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void saveArticle()} disabled={busy}>{editingArticle ? <Pencil size={14} /> : <Plus size={14} />}{editingArticle ? "Aggiorna articolo" : "Pubblica articolo"}</button>{editingArticle ? <button className="admin-cancel" type="button" onClick={() => { setArticle(blankArticle); setEditingArticle(null); }}>Annulla</button> : null}</div></div>
+              </section>
+              <section className="admin-products admin-articles-list">
+                <div className="admin-products__heading"><div><span className="admin-eyebrow"><BookOpen size={13} /> Journal live</span><h2>Articoli <small>({publishedArticles} online · {articles.length} totali)</small></h2></div><a href="/nutrition" target="_blank" rel="noreferrer" className="text-link">Apri Nutrition <ExternalLink size={14} /></a></div>
+                {articles.length === 0 ? <div className="admin-empty">Non ci sono ancora articoli. Crea il primo qui sopra.</div> : <div className="admin-products-list">{articles.map((item) => <div className="admin-product-row" key={item.id}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><BookOpen size={17} /></span>}<div><strong>{item.titleIt}</strong><span>/{`nutrition/${item.slug}`}</span></div></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("article", item.id, item.isPublished !== 1)}>{statusUpdating === `article:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.titleIt}`} onClick={() => beginArticleEdit(item)}><Pencil size={15} /></button></div>)}</div>}
+              </section>
+            </>
+          )}
+
+          {section === "settings" && (
+            <section className="admin-card admin-security-card">
+              <div className="admin-card__top"><div><span className="admin-card__number">01 / ACCESSO</span><h2>Cambia il PIN</h2></div><span className="admin-badge"><KeyRound size={12} /> Protetto</span></div>
+              <div className="admin-security-intro"><div className="admin-security-intro__icon"><LockKeyhole size={20} /></div><div><strong>Il codice resta privato</strong><p>Il nuovo PIN viene salvato solo come hash con salt. Al termine uscirai automaticamente e dovrai effettuare un nuovo accesso.</p></div></div>
+              <div className="admin-security-form"><label>PIN attuale<input type="password" inputMode="numeric" autoComplete="current-password" value={currentPin} onChange={(event) => setCurrentPin(event.target.value)} placeholder="••••••" /></label><label>Nuovo PIN<input type="password" inputMode="numeric" autoComplete="new-password" value={newPin} onChange={(event) => setNewPin(event.target.value)} placeholder="6–12 cifre" /></label><label>Conferma nuovo PIN<input type="password" inputMode="numeric" autoComplete="new-password" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value)} placeholder="Ripeti il nuovo PIN" /></label></div>
+              <div className="admin-card__bottom"><p><ShieldCheck size={14} /> La modifica invalida le sessioni precedenti</p><button className="admin-primary" type="button" onClick={() => void changePin()} disabled={busy}><KeyRound size={14} /> Aggiorna PIN</button></div>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

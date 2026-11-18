@@ -109,6 +109,8 @@ type ProductView = {
   descriptionEs: string | null;
   imageUrl: string | null;
   whatsappMessage: string | null;
+  priceCents: number;
+  category: string;
 };
 
 function productCopy(product: ProductView, language: Language) {
@@ -138,7 +140,7 @@ function ProductCard({ product, language, ctaLabel }: { product: ProductView; la
       <div className="product-card__image-wrap">
         {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
       </div>
-      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p><a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
+      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{product.category}</small><a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
     </article>
   );
 }
@@ -147,15 +149,21 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [language, setLanguage] = useState<Language>("it");
   const [products, setProducts] = useState<ProductView[]>([]);
+  const [articles, setArticles] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("Tutte");
   const t = (key: string) => copy[language][key] ?? copy.it[key] ?? key;
 
   useEffect(() => {
-    fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,isPublished&isPublished=eq.1&order=createdAt.desc`, {
+    fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,isPublished&isPublished=eq.1&order=createdAt.desc`, {
       headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` },
     })
       .then((response) => response.ok ? response.json() : [])
       .then((items: ProductView[]) => setProducts(items))
       .catch(() => setProducts([]));
+  }, []);
+
+  useEffect(() => { fetch(`${supabaseUrl}/rest/v1/nutrition_articles?select=*&isPublished=eq.1&order=createdAt.desc`, { headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` } }).then(r => r.ok ? r.json() : []).then(setArticles).catch(() => setArticles([]));
   }, []);
 
   useEffect(() => {
@@ -171,6 +179,8 @@ export default function Home() {
   }, []);
 
   const closeMenu = () => setMenuOpen(false);
+  const categories = ["Tutte", ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
+  const visibleProducts = products.filter((product) => { const text = `${product.nameIt} ${product.descriptionIt} ${product.nameEn || ""} ${product.nameEs || ""}`.toLowerCase(); return (!search.trim() || text.includes(search.toLowerCase())) && (selectedCategory === "Tutte" || product.category === selectedCategory); });
 
   return (
     <div className="site-shell">
@@ -267,7 +277,7 @@ export default function Home() {
               </div>
               <p>{t("catalogBody")}</p>
             </div>
-            {products.length > 0 ? <div className="product-grid">{(products as ProductView[]).map((product) => <ProductCard key={product.id} product={product} language={language} ctaLabel={t("askNow")} />)}</div> : <div className="empty-catalog">
+            <div className="catalog-filters"><input aria-label="Cerca prodotti" placeholder={language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"} value={search} onChange={(event) => setSearch(event.target.value)} /> <div className="category-filters">{categories.map((category) => <button key={category} type="button" className={selectedCategory === category ? "is-active" : ""} onClick={() => setSelectedCategory(category)}>{category}</button>)}</div></div>{visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((product) => <ProductCard key={product.id} product={product} language={language} ctaLabel={t("askNow")} />)}</div> : <div className="empty-catalog">
               <div className="empty-catalog__mark"><Leaf size={32} strokeWidth={1.1} /></div>
               <div>
                 <span className="empty-catalog__eyebrow">{t("emptyEyebrow")}</span>
@@ -334,6 +344,7 @@ export default function Home() {
               <div><Check size={16} /> {t("futureTwo")}</div>
               <div><Check size={16} /> {t("futureThree")}</div>
             </div>
+          {articles.length > 0 ? <div className="nutrition-articles">{articles.map((article) => { const title = language === "en" ? (article.titleEn || article.titleIt) : language === "es" ? (article.titleEs || article.titleIt) : article.titleIt; const body = language === "en" ? (article.bodyEn || article.bodyIt) : language === "es" ? (article.bodyEs || article.bodyIt) : article.bodyIt; return <article key={article.id} className="nutrition-article"><h3>{title}</h3><p>{body}</p>{article.imageUrl ? <img src={article.imageUrl} alt={title} /> : null}</article>; })}</div> : null}
           </div>
         </section>
 

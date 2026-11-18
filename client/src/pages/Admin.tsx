@@ -122,6 +122,7 @@ export default function Admin() {
   const [editingArticle, setEditingArticle] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
   const [imageUploading, setImageUploading] = useState<"product" | "article" | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
   const load = async () => {
     const data = await adminRequest("list");
@@ -193,6 +194,23 @@ export default function Admin() {
       else setError(uploadError instanceof Error ? uploadError.message : "Caricamento immagine non riuscito.");
     } finally {
       setImageUploading(null);
+    }
+  };
+
+  const setPublication = async (kind: "product" | "article", id: number, isPublished: boolean) => {
+    const key = `${kind}:${id}`;
+    setStatusUpdating(key);
+    setError("");
+    setNotice("");
+    try {
+      await adminRequest("set_published", { kind, id, isPublished: isPublished ? 1 : 0 });
+      await load();
+      setNotice(isPublished ? "Contenuto pubblicato." : "Contenuto spostato in bozza.");
+    } catch (statusError) {
+      if (statusError instanceof AdminRequestError && statusError.status === 401) logout(true);
+      else setError(statusError instanceof Error ? statusError.message : "Stato di pubblicazione non aggiornato.");
+    } finally {
+      setStatusUpdating(null);
     }
   };
 
@@ -359,13 +377,13 @@ export default function Admin() {
         </section>
 
         <section className="admin-products">
-          <div className="admin-products__heading"><div><span className="admin-eyebrow"><Package size={13} /> Catalogo live</span><h2>Prodotti pubblicati <small>({products.length})</small></h2></div><a href="/" target="_blank" rel="noreferrer" className="text-link">Apri il sito <ExternalLink size={14} /></a></div>
-          {products.length === 0 ? <div className="admin-empty">Nessun prodotto pubblicato. Il catalogo è pronto per il primo rituale.</div> : <div className="admin-products-list">{products.map((item) => <div className="admin-product-row" key={item.id}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={18} /></span>}<div><strong>{item.nameIt}</strong><span>{item.category} · {(item.priceCents / 100).toFixed(2)} EUR</span></div></div><span className="admin-published"><CheckCircle2 size={13} /> Online</span><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => { setEditingProduct(item.id); setProduct({ name: item.nameIt, description: item.descriptionIt, price: String(item.priceCents / 100), category: item.category || "Altro", imageUrl: item.imageUrl || "", whatsappMessage: item.whatsappMessage || "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={15} /></button></div>)}</div>}
+          <div className="admin-products__heading"><div><span className="admin-eyebrow"><Package size={13} /> Catalogo live</span><h2>Prodotti <small>({products.filter((item) => item.isPublished === 1).length} pubblicati · {products.length} totali)</small></h2></div><a href="/" target="_blank" rel="noreferrer" className="text-link">Apri il sito <ExternalLink size={14} /></a></div>
+          {products.length === 0 ? <div className="admin-empty">Nessun prodotto pubblicato. Il catalogo è pronto per il primo rituale.</div> : <div className="admin-products-list">{products.map((item) => <div className="admin-product-row" key={item.id}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={18} /></span>}<div><strong>{item.nameIt}</strong><span>{item.category} · {(item.priceCents / 100).toFixed(2)} EUR</span></div></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("product", item.id, item.isPublished !== 1)}>{statusUpdating === `product:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => { setEditingProduct(item.id); setProduct({ name: item.nameIt, description: item.descriptionIt, price: String(item.priceCents / 100), category: item.category || "Altro", imageUrl: item.imageUrl || "", whatsappMessage: item.whatsappMessage || "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={15} /></button></div>)}</div>}
         </section>
 
         <section className="admin-products admin-articles-list">
-          <div className="admin-products__heading"><div><span className="admin-eyebrow"><BookOpen size={13} /> Journal live</span><h2>Articoli pubblicati <small>({articles.length})</small></h2></div></div>
-          {articles.length === 0 ? <div className="admin-empty">Non ci sono ancora articoli pubblicati.</div> : <div className="admin-products-list">{articles.map((item) => <div className="admin-product-row" key={item.id}><div><strong>{item.titleIt}</strong><span>Articolo Nutrition</span></div><span className="admin-published"><CheckCircle2 size={13} /> Online</span><button className="admin-edit" type="button" aria-label={`Modifica ${item.titleIt}`} onClick={() => { setEditingArticle(item.id); setArticle({ title: item.titleIt, body: item.bodyIt, imageUrl: item.imageUrl || "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={15} /></button></div>)}</div>}
+          <div className="admin-products__heading"><div><span className="admin-eyebrow"><BookOpen size={13} /> Journal live</span><h2>Articoli <small>({articles.filter((item) => item.isPublished === 1).length} pubblicati · {articles.length} totali)</small></h2></div></div>
+          {articles.length === 0 ? <div className="admin-empty">Non ci sono ancora articoli pubblicati.</div> : <div className="admin-products-list">{articles.map((item) => <div className="admin-product-row" key={item.id}><div><strong>{item.titleIt}</strong><span>Articolo Nutrition</span></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("article", item.id, item.isPublished !== 1)}>{statusUpdating === `article:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.titleIt}`} onClick={() => { setEditingArticle(item.id); setArticle({ title: item.titleIt, body: item.bodyIt, imageUrl: item.imageUrl || "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil size={15} /></button></div>)}</div>}
         </section>
       </main>
     </div>

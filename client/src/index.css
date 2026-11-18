@@ -708,6 +708,9 @@ body { background: var(--paper); color: var(--ink); }
 .admin-products small { color: #8b9587; font-family: var(--sans); font-size: 13px; font-weight: 500; letter-spacing: 0; }
 .admin-published { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #6e8a70; font-size: 10px; white-space: nowrap; }
 .admin-published svg { color: #7ea078; }
+.admin-unpublished { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #a46d50; font-size: 10px; white-space: nowrap; }
+.admin-publish-toggle { padding: 5px 9px; border: 1px solid #d8dfd2; border-radius: 999px; color: #42654f; background: #f7f8f2; font-size: 10px; cursor: pointer; }
+.admin-publish-toggle:disabled { cursor: wait; opacity: .55; }
 .admin-articles-list { margin-top: 38px; }
 .admin-card__top .admin-badge { display: inline-flex; align-items: center; gap: 6px; }
 .admin-language-tabs button:disabled { cursor: not-allowed; opacity: .45; }

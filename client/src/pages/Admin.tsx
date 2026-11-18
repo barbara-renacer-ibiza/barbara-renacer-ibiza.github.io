@@ -187,10 +187,8 @@ export default function Admin() {
         whatsappMessage: product.whatsappMessage.trim() || null,
         isPublished: 1,
       };
-      const response = editingProduct
-        ? await request("/rest/v1/products?id=eq." + editingProduct, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) })
-        : await request("/rest/v1/products", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...data, slug: product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now() }) });
-      if (!response.ok) throw new Error("Salvataggio fallito");
+      const response = await adminRequest(editingProduct ? "update" : "create", { id: editingProduct, product: { ...data, slug: editingProduct ? undefined : product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now() } });
+      if (!response) throw new Error("Salvataggio fallito");
       await load();
       setProduct(blankProduct);
       setEditingProduct(null);
@@ -222,10 +220,8 @@ export default function Admin() {
         imageUrl: article.imageUrl.trim() || null,
         isPublished: 1,
       };
-      const response = editingArticle
-        ? await request("/rest/v1/nutrition_articles?id=eq." + editingArticle, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) })
-        : await request("/rest/v1/nutrition_articles", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) });
-      if (!response.ok) throw new Error("Salvataggio articolo fallito");
+      const result = await adminRequest(editingArticle ? "article_update" : "article_create", { id: editingArticle, article: data });
+      if (!result) throw new Error("Salvataggio articolo fallito");
       await load();
       setArticle(blankArticle);
       setEditingArticle(null);

@@ -15,6 +15,7 @@ type PlantMaterial = {
   safetyEn: string | null;
   safetyEs: string | null;
   sourceUrl: string | null;
+  imageUrl: string | null;
 };
 type Product = { id: number; slug: string; nameIt: string; nameEn: string | null; nameEs: string | null };
 type ProductMaterial = { productId: number; plantSlug: string };
@@ -73,7 +74,7 @@ export default function Plants() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/plant_materials?select=slug,nameIt,nameEn,nameEs,botanicalName,descriptionIt,descriptionEn,descriptionEs,safetyIt,safetyEn,safetyEs,sourceUrl&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => {
+      fetch(`${supabaseUrl}/rest/v1/plant_materials?select=slug,nameIt,nameEn,nameEs,botanicalName,descriptionIt,descriptionEn,descriptionEs,safetyIt,safetyEn,safetyEs,sourceUrl,imageUrl&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => {
         if (!response.ok) throw new Error("materials");
         return response.json() as Promise<PlantMaterial[]>;
       }),
@@ -156,6 +157,7 @@ export default function Plants() {
                 const related = relations.filter((relation) => relation.plantSlug === material.slug).map((relation) => products.find((product) => product.id === relation.productId)).filter((product): product is Product => Boolean(product));
                 const safety = materialSafety(material, language);
                 return <article className={selectedSlug === material.slug ? "plant-card is-highlighted" : "plant-card"} id={`material-${material.slug}`} key={material.slug}>
+                  {material.imageUrl ? <img className="plant-card__image" src={material.imageUrl} alt={materialName(material, language)} loading="lazy" /> : null}
                   <div className="plant-card__top"><span>{String(index + 1).padStart(2, "0")}</span><Leaf size={17} /></div>
                   <h3>{materialName(material, language)}</h3>
                   {material.botanicalName ? <p className="plant-card__botanical"><i>{material.botanicalName}</i></p> : null}

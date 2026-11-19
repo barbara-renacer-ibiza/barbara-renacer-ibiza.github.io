@@ -62,8 +62,8 @@ type Category = {
   nameEs: string;
   isActive: boolean;
 };
-type PlantMaterial = { slug: string; nameIt: string; nameEn: string; nameEs: string; botanicalName: string; descriptionIt: string; descriptionEn: string; descriptionEs: string; safetyIt: string; safetyEn: string; safetyEs: string; sourceUrl: string | null; isActive: boolean };
-type PlantForm = { nameIt: string; nameEn: string; nameEs: string; botanicalName: string; descriptionIt: string; descriptionEn: string; descriptionEs: string; safetyIt: string; safetyEn: string; safetyEs: string; sourceUrl: string };
+type PlantMaterial = { slug: string; nameIt: string; nameEn: string; nameEs: string; botanicalName: string | null; descriptionIt: string; descriptionEn: string; descriptionEs: string; safetyIt: string | null; safetyEn: string | null; safetyEs: string | null; sourceUrl: string | null; imageUrl: string | null; isActive: boolean };
+type PlantForm = { nameIt: string; botanicalName: string; descriptionIt: string; safetyIt: string; sourceUrl: string; imageUrl: string };
 type ProductForm = { name: string; description: string; price: string; categorySlug: string; imageUrl: string; whatsappMessage: string; INCI: string; plantSlugs: string[] };
 type ProductTranslations = { en: { name: string; description: string }; es: { name: string; description: string } };
 type ArticleForm = { title: string; body: string; imageUrl: string };
@@ -76,7 +76,7 @@ const adminFunctionUrl = `${supabaseUrl}/functions/v1/renacer-admin`;
 const blankProduct: ProductForm = { name: "", description: "", price: "", categorySlug: "", imageUrl: "", whatsappMessage: "", INCI: "", plantSlugs: [] };
 const blankArticle: ArticleForm = { title: "", body: "", imageUrl: "" };
 const blankCategory: CategoryForm = { nameIt: "", nameEn: "", nameEs: "", isActive: true };
-const blankPlant: PlantForm = { nameIt: "", nameEn: "", nameEs: "", botanicalName: "", descriptionIt: "", descriptionEn: "", descriptionEs: "", safetyIt: "", safetyEn: "", safetyEs: "", sourceUrl: "" };
+const blankPlant: PlantForm = { nameIt: "", botanicalName: "", descriptionIt: "", safetyIt: "", sourceUrl: "", imageUrl: "" };
 
 class AdminRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -161,7 +161,7 @@ export default function Admin() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingPlant, setEditingPlant] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [imageUploading, setImageUploading] = useState<"product" | "article" | null>(null);
+  const [imageUploading, setImageUploading] = useState<"product" | "article" | "plant" | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -209,7 +209,7 @@ export default function Admin() {
     }
   };
 
-  const uploadImage = async (file: File | undefined, entity: "product" | "article") => {
+  const uploadImage = async (file: File | undefined, entity: "product" | "article" | "plant") => {
     if (!file) return;
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
     if (!allowedTypes.includes(file.type)) { setError("Formato non supportato. Usa JPG, PNG, WebP, GIF o AVIF."); return; }
@@ -232,7 +232,8 @@ export default function Admin() {
       if (!response.ok) throw new AdminRequestError(data.error || "Caricamento immagine non riuscito.", response.status);
       if (typeof data.url !== "string") throw new Error("Il caricamento non ha restituito l'indirizzo dell'immagine.");
       if (entity === "product") setProduct((value) => ({ ...value, imageUrl: data.url }));
-      else setArticle((value) => ({ ...value, imageUrl: data.url }));
+      else if (entity === "article") setArticle((value) => ({ ...value, imageUrl: data.url }));
+      else setPlantForm((value) => ({ ...value, imageUrl: data.url }));
       setNotice("Immagine caricata. Salva il contenuto per pubblicarla.");
     } catch (uploadError) {
       if (uploadError instanceof AdminRequestError && uploadError.status === 401) logout(true);
@@ -319,27 +320,37 @@ export default function Admin() {
   };
 
   const savePlant = async () => {
-    const data = {
-      nameIt: plantForm.nameIt.trim(), nameEn: plantForm.nameEn.trim(), nameEs: plantForm.nameEs.trim(),
-      botanicalName: plantForm.botanicalName.trim() || null,
-      descriptionIt: plantForm.descriptionIt.trim(), descriptionEn: plantForm.descriptionEn.trim(), descriptionEs: plantForm.descriptionEs.trim(),
-      safetyIt: plantForm.safetyIt.trim() || null, safetyEn: plantForm.safetyEn.trim() || null, safetyEs: plantForm.safetyEs.trim() || null,
-      sourceUrl: plantForm.sourceUrl.trim() || null,
-      isActive: editingPlant ? plantMaterials.find((item) => item.slug === editingPlant)?.isActive ?? true : true,
-    };
-    if (!data.nameIt || !data.nameEn || !data.nameEs || !data.descriptionIt || !data.descriptionEn || !data.descriptionEs) {
-      setError("Completa i nomi e le descrizioni in italiano, inglese e spagnolo.");
+    if (!plantForm.nameIt.trim() || !plantForm.descriptionIt.trim()) {
+      setError("Inserisci il nome e la descrizione in italiano.");
       return;
     }
-    if (data.sourceUrl) {
-      try { if (new URL(data.sourceUrl).protocol !== "https:") throw new Error(); }
+    const sourceUrl = plantForm.sourceUrl.trim();
+    if (sourceUrl) {
+      try { if (new URL(sourceUrl).protocol !== "https:") throw new Error(); }
       catch { setError("Il link della fonte deve iniziare con https://."); return; }
     }
     setBusy(true); setError(""); setNotice("");
     try {
+      const translated = await adminRequest("translate", {
+        sourceLanguage: "it",
+        name: plantForm.nameIt.trim(),
+        description: plantForm.descriptionIt.trim(),
+        safety: plantForm.safetyIt.trim(),
+      });
+      if (!translated?.en?.name || !translated?.en?.description || !translated?.es?.name || !translated?.es?.description || (plantForm.safetyIt.trim() && (!translated?.en?.safety || !translated?.es?.safety))) {
+        throw new Error("Traduzioni automatiche incomplete. Controlla il testo e riprova.");
+      }
+      const data = {
+        nameIt: plantForm.nameIt.trim(), nameEn: translated.en.name, nameEs: translated.es.name,
+        botanicalName: plantForm.botanicalName.trim() || null,
+        descriptionIt: plantForm.descriptionIt.trim(), descriptionEn: translated.en.description, descriptionEs: translated.es.description,
+        safetyIt: plantForm.safetyIt.trim() || null, safetyEn: translated.en.safety || null, safetyEs: translated.es.safety || null,
+        sourceUrl: sourceUrl || null, imageUrl: plantForm.imageUrl.trim() || null,
+        isActive: editingPlant ? plantMaterials.find((item) => item.slug === editingPlant)?.isActive ?? true : true,
+      };
       await adminRequest(editingPlant ? "material_update" : "material_create", { slug: editingPlant, material: data });
       await load(); setPlantForm(blankPlant); setEditingPlant(null);
-      setNotice(editingPlant ? "Materia prima aggiornata." : "Materia prima aggiunta alla guida.");
+      setNotice(editingPlant ? "Materia prima aggiornata e tradotta." : "Materia prima aggiunta e tradotta nella guida.");
     } catch (saveError) {
       if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
       else setError(saveError instanceof Error ? saveError.message : "Salvataggio della materia prima non riuscito.");
@@ -348,7 +359,7 @@ export default function Admin() {
 
   const beginPlantEdit = (item: PlantMaterial) => {
     setEditingPlant(item.slug);
-    setPlantForm({ nameIt: item.nameIt, nameEn: item.nameEn, nameEs: item.nameEs, botanicalName: item.botanicalName || "", descriptionIt: item.descriptionIt, descriptionEn: item.descriptionEn, descriptionEs: item.descriptionEs, safetyIt: item.safetyIt || "", safetyEn: item.safetyEn || "", safetyEs: item.safetyEs || "", sourceUrl: item.sourceUrl || "" });
+    setPlantForm({ nameIt: item.nameIt, botanicalName: item.botanicalName || "", descriptionIt: item.descriptionIt, safetyIt: item.safetyIt || "", sourceUrl: item.sourceUrl || "", imageUrl: item.imageUrl || "" });
     setError(""); setNotice("");
   };
 
@@ -571,21 +582,19 @@ export default function Admin() {
                 <div className="admin-card__top"><div><span className="admin-card__number">{editingPlant ? "MODIFICA MATERIA" : "NUOVA MATERIA"}</span><h2>{editingPlant ? "Aggiorna la scheda" : "Aggiungi una materia prima"}</h2></div><span className="admin-badge"><Sprout size={12} /> Guida botanica</span></div>
                 <div className="admin-plant-fields">
                   <label>Nome in italiano<input value={plantForm.nameIt} onChange={(event) => setPlantForm({ ...plantForm, nameIt: event.target.value })} placeholder="Es. Calendula" /></label>
-                  <label>Name in English<input value={plantForm.nameEn} onChange={(event) => setPlantForm({ ...plantForm, nameEn: event.target.value })} placeholder="e.g. Calendula" /></label>
-                  <label>Nombre en español<input value={plantForm.nameEs} onChange={(event) => setPlantForm({ ...plantForm, nameEs: event.target.value })} placeholder="p. ej. Caléndula" /></label>
                   <label>Nome botanico<input value={plantForm.botanicalName} onChange={(event) => setPlantForm({ ...plantForm, botanicalName: event.target.value })} placeholder="Calendula officinalis" /></label>
-                  <label>Descrizione · IT<textarea rows={4} value={plantForm.descriptionIt} onChange={(event) => setPlantForm({ ...plantForm, descriptionIt: event.target.value })} /></label>
-                  <label>Description · EN<textarea rows={4} value={plantForm.descriptionEn} onChange={(event) => setPlantForm({ ...plantForm, descriptionEn: event.target.value })} /></label>
-                  <label>Descripción · ES<textarea rows={4} value={plantForm.descriptionEs} onChange={(event) => setPlantForm({ ...plantForm, descriptionEs: event.target.value })} /></label>
-                  <label>Nota di cautela · IT<textarea rows={3} value={plantForm.safetyIt} onChange={(event) => setPlantForm({ ...plantForm, safetyIt: event.target.value })} /></label>
-                  <label>Safety note · EN<textarea rows={3} value={plantForm.safetyEn} onChange={(event) => setPlantForm({ ...plantForm, safetyEn: event.target.value })} /></label>
-                  <label>Precaución · ES<textarea rows={3} value={plantForm.safetyEs} onChange={(event) => setPlantForm({ ...plantForm, safetyEs: event.target.value })} /></label>
                   <label className="admin-plant-source">Link della fonte (HTTPS)<input type="url" value={plantForm.sourceUrl} onChange={(event) => setPlantForm({ ...plantForm, sourceUrl: event.target.value })} placeholder="https://…" /></label>
+                  <label className="admin-plant-description">Descrizione in italiano<textarea rows={4} value={plantForm.descriptionIt} onChange={(event) => setPlantForm({ ...plantForm, descriptionIt: event.target.value })} placeholder="Descrivi la materia prima e il suo uso cosmetico..." /></label>
+                  <label className="admin-plant-safety">Nota di cautela in italiano<textarea rows={3} value={plantForm.safetyIt} onChange={(event) => setPlantForm({ ...plantForm, safetyIt: event.target.value })} placeholder="Facoltativa; aggiungi solo cautele pertinenti e supportate." /></label>
+                  <div className="admin-plant-image-upload">
+                    <div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "plant" ? "Caricamento immagine..." : plantForm.imageUrl ? "Sostituisci immagine" : "Carica immagine della pianta"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "plant"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div>
+                    <div className="admin-image-preview admin-plant-image-preview">{plantForm.imageUrl ? <><img src={plantForm.imageUrl} alt="Anteprima della materia prima" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine della materia prima" onClick={() => setPlantForm({ ...plantForm, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Nessuna immagine caricata</span>}</div>
+                  </div>
                 </div>
-                <div className="admin-card__bottom"><p><Info size={14} /> Descrivi usi cosmetici; evita promesse mediche</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void savePlant()} disabled={busy}>{editingPlant ? <Save size={14} /> : <Plus size={14} />}{editingPlant ? "Salva materia" : "Aggiungi alla guida"}</button>{editingPlant ? <button className="admin-cancel" type="button" onClick={() => { setPlantForm(blankPlant); setEditingPlant(null); }}>Annulla</button> : null}</div></div>
+                <div className="admin-card__bottom"><p><Info size={14} /> Scrivi in italiano: nome, descrizione e cautele saranno tradotti automaticamente in inglese e spagnolo al salvataggio.</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void savePlant()} disabled={busy || imageUploading !== null}>{editingPlant ? <Save size={14} /> : <Plus size={14} />}{busy ? "Traduzione e salvataggio..." : editingPlant ? "Salva materia" : "Aggiungi alla guida"}</button>{editingPlant ? <button className="admin-cancel" type="button" onClick={() => { setPlantForm(blankPlant); setEditingPlant(null); }}>Annulla</button> : null}</div></div>
               </section>
               <section className="admin-products admin-plant-list"><div className="admin-products__heading"><div><span className="admin-eyebrow"><Sprout size={13} /> Materie prime</span><h2>Guida botanica <small>({plantMaterials.length})</small></h2></div><a href="/plants" target="_blank" rel="noreferrer" className="text-link">Apri la guida <ExternalLink size={14} /></a></div>
-                {plantMaterials.length === 0 ? <div className="admin-empty">Nessuna materia prima. Aggiungi la prima scheda qui sopra.</div> : <div className="admin-products-list">{plantMaterials.map((item) => <div className="admin-product-row plant-admin-row" key={item.slug}><div className="admin-product-row__identity"><span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={17} /></span><div><strong>{item.nameIt}</strong><span>{item.botanicalName || item.slug} · {item.nameEn} · {item.nameEs}</span></div></div><span className={item.isActive ? "admin-published" : "admin-unpublished"}>{item.isActive ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isActive ? "Attiva" : "Nascosta"}</span><button className="admin-publish-toggle" type="button" onClick={() => void togglePlant(item)}>{item.isActive ? "Nascondi" : "Attiva"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginPlantEdit(item)}><Pencil size={15} /></button></div>)}</div>}
+                {plantMaterials.length === 0 ? <div className="admin-empty">Nessuna materia prima. Aggiungi la prima scheda qui sopra.</div> : <div className="admin-products-list">{plantMaterials.map((item) => <div className="admin-product-row plant-admin-row" key={item.slug}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb admin-plant-thumbnail" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={17} /></span>}<div><strong>{item.nameIt}</strong><span>{item.botanicalName || item.slug} · {item.nameEn} · {item.nameEs}</span></div></div><span className={item.isActive ? "admin-published" : "admin-unpublished"}>{item.isActive ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isActive ? "Attiva" : "Nascosta"}</span><button className="admin-publish-toggle" type="button" onClick={() => void togglePlant(item)}>{item.isActive ? "Nascondi" : "Attiva"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginPlantEdit(item)}><Pencil size={15} /></button></div>)}</div>}
               </section>
             </>
           )}

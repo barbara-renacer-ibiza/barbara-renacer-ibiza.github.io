@@ -96,8 +96,9 @@ function writeResult(result: { ok: boolean; status: number; data: unknown }) {
   return json(result.data);
 }
 
-async function translateText(name: string, description: string) {
+async function translateText(name: string, description: string, safety = "") {
   const translate = async (text: string, lang: "en" | "es") => {
+    if (!text.trim()) return "";
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=it|${lang}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("Servizio di traduzione non disponibile.");
@@ -106,10 +107,11 @@ async function translateText(name: string, description: string) {
     if (typeof translated !== "string" || !translated.trim()) throw new Error("Traduzione incompleta.");
     return translated;
   };
-  const [enName, enDescription, esName, esDescription] = await Promise.all([
+  const [enName, enDescription, esName, esDescription, enSafety, esSafety] = await Promise.all([
     translate(name, "en"), translate(description, "en"), translate(name, "es"), translate(description, "es"),
+    translate(safety, "en"), translate(safety, "es"),
   ]);
-  return { it: { name, description }, en: { name: enName, description: enDescription }, es: { name: esName, description: esDescription } };
+  return { it: { name, description, safety }, en: { name: enName, description: enDescription, safety: enSafety }, es: { name: esName, description: esDescription, safety: esSafety } };
 }
 
 async function resolveCategorySlug(product: Record<string, unknown>) {
@@ -226,7 +228,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "translate") {
       if (String(body.sourceLanguage || "it") !== "it") return json({ error: "La lingua di origine deve essere l'italiano." }, 400);
-      try { return json(await translateText(String(body.name || ""), String(body.description || ""))); }
+      try { return json(await translateText(String(body.name || ""), String(body.description || ""), String(body.safety || ""))); }
       catch (error) { return json({ error: errorMessage(error) }, 502); }
     }
 
@@ -234,7 +236,7 @@ Deno.serve(async (req: Request) => {
       if (!form) return json({ error: "Caricamento immagine non valido." }, 400);
       const file = form.get("file");
       const entity = String(form.get("entity") || "");
-      if (!(file instanceof File) || !["product", "article"].includes(entity)) return json({ error: "File immagine o destinazione non validi." }, 400);
+      if (!(file instanceof File) || !["product", "article", "plant"].includes(entity)) return json({ error: "File immagine o destinazione non validi." }, 400);
       if (!Object.hasOwn(imageTypes, file.type)) return json({ error: "Formato non supportato. Usa JPG, PNG, WebP, GIF o AVIF." }, 415);
       if (file.size <= 0 || file.size > 10 * 1024 * 1024) return json({ error: "L'immagine deve avere una dimensione massima di 10 MB." }, 413);
       const signature = new Uint8Array(await file.slice(0, 32).arrayBuffer());
@@ -288,6 +290,8 @@ Deno.serve(async (req: Request) => {
       }
       const botanicalName = String(m.botanicalName || "").trim();
       if (botanicalName.length > 180) return json({ error: "Il nome botanico è troppo lungo." }, 400);
+      const imageUrl = String(m.imageUrl || "").trim();
+      if (imageUrl && (!imageUrl.startsWith(`${base()}/storage/v1/object/public/renacer-media/plant/`) || imageUrl.length > 2048)) return json({ error: "Carica un'immagine della materia prima tramite il modulo immagini." }, 400);
       const sourceUrl = String(m.sourceUrl || "").trim();
       if (sourceUrl && (!/^https:\/\//i.test(sourceUrl) || sourceUrl.length > 2048)) return json({ error: "Il link della fonte deve essere HTTPS e non superare 2048 caratteri." }, 400);
       for (const field of ["safetyIt", "safetyEn", "safetyEs"] as const) {
@@ -296,6 +300,7 @@ Deno.serve(async (req: Request) => {
         data[field] = value || null;
       }
       data.botanicalName = botanicalName || null;
+      data.imageUrl = imageUrl || null;
       data.sourceUrl = sourceUrl || null;
       data.isActive = true;
       const slug = `${cleanSlug(String(m.nameIt))}-${Date.now().toString(36)}`;
@@ -315,6 +320,11 @@ Deno.serve(async (req: Request) => {
         const value = String(m.botanicalName || "").trim();
         if (value.length > 180) return json({ error: "Il nome botanico è troppo lungo." }, 400);
         data.botanicalName = value || null;
+      }
+      if (m.imageUrl !== undefined) {
+        const value = String(m.imageUrl || "").trim();
+        if (value && (!value.startsWith(`${base()}/storage/v1/object/public/renacer-media/plant/`) || value.length > 2048)) return json({ error: "Carica un'immagine della materia prima tramite il modulo immagini." }, 400);
+        data.imageUrl = value || null;
       }
       if (m.sourceUrl !== undefined) {
         const value = String(m.sourceUrl || "").trim();

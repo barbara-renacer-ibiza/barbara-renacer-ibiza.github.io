@@ -51,6 +51,11 @@ const nutritionCopy: Record<Language, Record<string, string>> = {
   en: { allCategories: "All categories", searchEmpty: "No products match your search.", learnMore: "Learn more", allArticles: "All articles" },
   es: { allCategories: "Todas las categorías", searchEmpty: "No hay productos que coincidan con la búsqueda.", learnMore: "Leer más", allArticles: "Todos los artículos" },
 };
+const extraCopy: Record<Language, Record<string, string>> = {
+  it: { plants: "Le piante", inci: "INCI · ingredienti", rawMaterials: "Esplora le materie prime" },
+  en: { plants: "The plants", inci: "INCI · ingredients", rawMaterials: "Explore raw materials" },
+  es: { plants: "Las plantas", inci: "INCI · ingredientes", rawMaterials: "Explora las materias primas" },
+};
 
 function BotanicalMark({ compact = false }: { compact?: boolean }) {
   return (
@@ -89,6 +94,8 @@ type ProductView = {
   priceCents: number;
   category: string;
   categorySlug: string;
+  INCI: string | null;
+  plantSlugs?: string[];
 };
 
 type NutritionArticleView = {
@@ -104,6 +111,8 @@ type NutritionArticleView = {
 };
 
 type CategoryView = { slug: string; nameIt: string; nameEn: string | null; nameEs: string | null; isActive: boolean };
+type PlantMaterialView = { slug: string; nameIt: string; nameEn: string | null; nameEs: string | null };
+type ProductPlantLink = { productId: number; plantSlug: string };
 
 function productCopy(product: ProductView, language: Language) {
   const names: Record<Language, string | null> = { it: product.nameIt, en: product.nameEn, es: product.nameEs };
@@ -119,7 +128,7 @@ function productWhatsappLink(product: ProductView, language: Language, name: str
   return `${whatsappLink}?text=${encodeURIComponent(customMessage || prompts[language])}`;
 }
 
-function ProductCard({ product, language, ctaLabel, categoryLabel }: { product: ProductView; language: Language; ctaLabel: string; categoryLabel: string }) {
+function ProductCard({ product, language, ctaLabel, categoryLabel, plantMaterials, inciLabel, rawMaterialsLabel }: { product: ProductView; language: Language; ctaLabel: string; categoryLabel: string; plantMaterials: PlantMaterialView[]; inciLabel: string; rawMaterialsLabel: string }) {
   const localized = productCopy(product, language);
   const link = productWhatsappLink(product, language, localized.name);
   const originalCopyLabel = {
@@ -128,11 +137,14 @@ function ProductCard({ product, language, ctaLabel, categoryLabel }: { product: 
     es: { it: "Texto original en italiano", en: "Texto original en inglés", es: "Texto original en español" },
   };
   return (
-    <article className="product-card">
+    <article className="product-card" id={`product-${product.id}`}>
       <div className="product-card__image-wrap">
         {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
       </div>
-      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small><a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
+      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small>
+        {product.INCI?.trim() ? <details className="product-card__inci"><summary>{inciLabel}</summary><p>{product.INCI}</p></details> : null}
+        {plantMaterials.length ? <div className="product-card__materials"><span>{rawMaterialsLabel}</span><div>{plantMaterials.map((material) => <a key={material.slug} href={`/plants?plant=${encodeURIComponent(material.slug)}`}>{language === "en" ? material.nameEn || material.nameIt : language === "es" ? material.nameEs || material.nameIt : material.nameIt}</a>)}</div></div> : null}
+        <a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
     </article>
   );
 }
@@ -155,20 +167,26 @@ export default function Home() {
   const [language, setLanguage] = useState<Language>("it");
   const [products, setProducts] = useState<ProductView[]>([]);
   const [catalogCategories, setCatalogCategories] = useState<CategoryView[]>([]);
+  const [plantMaterials, setPlantMaterials] = useState<PlantMaterialView[]>([]);
   const [articles, setArticles] = useState<NutritionArticleView[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const t = (key: string) => nutritionCopy[language][key] ?? copy[language][key] ?? copy.it[key] ?? key;
+  const t = (key: string) => extraCopy[language][key] ?? nutritionCopy[language][key] ?? copy[language][key] ?? copy.it[key] ?? key;
 
   useEffect(() => {
     const headers = { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` };
     Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,categorySlug,isPublished&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => response.ok ? response.json() : []),
+      fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,categorySlug,INCI,isPublished&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => response.ok ? response.json() : []),
       fetch(`${supabaseUrl}/rest/v1/categories?select=slug,nameIt,nameEn,nameEs,isActive&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
-    ]).then(([items, categoryRows]: [ProductView[], CategoryView[]]) => {
-      setProducts(items);
+      fetch(`${supabaseUrl}/rest/v1/plant_materials?select=slug,nameIt,nameEn,nameEs&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
+      fetch(`${supabaseUrl}/rest/v1/product_plant_materials?select=productId,plantSlug&order=plantSlug.asc`, { headers }).then((response) => response.ok ? response.json() : []),
+    ]).then(([items, categoryRows, materialRows, materialLinks]: [ProductView[], CategoryView[], PlantMaterialView[], ProductPlantLink[]]) => {
+      const linksByProduct = new Map<number, string[]>();
+      materialLinks.forEach((link) => linksByProduct.set(link.productId, [...(linksByProduct.get(link.productId) || []), link.plantSlug]));
+      setProducts(items.map((item) => ({ ...item, plantSlugs: linksByProduct.get(item.id) || [] })));
       setCatalogCategories(categoryRows);
-    }).catch(() => { setProducts([]); setCatalogCategories([]); });
+      setPlantMaterials(materialRows);
+    }).catch(() => { setProducts([]); setCatalogCategories([]); setPlantMaterials([]); });
   }, []);
 
   useEffect(() => {
@@ -228,6 +246,7 @@ export default function Home() {
             {[
               { label: t("project"), href: "#progetto" },
               { label: t("nutrition"), href: "/nutrition" },
+              { label: t("plants"), href: "/plants" },
               { label: t("catalog"), href: "#catalogo" },
               { label: t("contact"), href: "#contatti" },
             ].map((item) => (
@@ -268,7 +287,7 @@ export default function Home() {
           </div>
           <div className="hero__visual">
             <div className="hero__visual-label hero__visual-label--top">Il ritmo di Ibiza</div>
-            <img className="hero__photo" src={assetUrl("/images/renacer-collection.webp")} alt="Creme, pomate e oli Renacer davanti al mare di Ibiza" />
+            <img className="hero__photo" src={assetUrl("/images/renacer-collection.webp")} alt="Fotografia del progetto Renacer a Ibiza" />
             <div className="hero__visual-label hero__visual-label--bottom"><Sprout size={15} /> piante, mani, tempo</div>
           </div>
         </section>
@@ -297,7 +316,7 @@ export default function Home() {
                 {categoryOptions.map((category) => <button key={category.slug} type="button" className={selectedCategory === category.slug ? "is-active" : ""} onClick={() => setSelectedCategory(category.slug)}>{categoryLabel(category)}</button>)}
               </div>
             </div>
-            {visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((item) => <ProductCard key={item.id} product={item} language={language} ctaLabel={t("askNow")} categoryLabel={categoryOptions.find((category) => category.slug === item.categorySlug) ? categoryLabel(categoryOptions.find((category) => category.slug === item.categorySlug)!) : item.category} />)}</div> : products.length > 0 ? <p className="catalog-no-results">{t("searchEmpty")}</p> : <div className="empty-catalog">
+            {visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((item) => <ProductCard key={item.id} product={item} language={language} ctaLabel={t("askNow")} inciLabel={t("inci")} rawMaterialsLabel={t("rawMaterials")} plantMaterials={plantMaterials.filter((material) => item.plantSlugs?.includes(material.slug))} categoryLabel={categoryOptions.find((category) => category.slug === item.categorySlug) ? categoryLabel(categoryOptions.find((category) => category.slug === item.categorySlug)!) : item.category} />)}</div> : products.length > 0 ? <p className="catalog-no-results">{t("searchEmpty")}</p> : <div className="empty-catalog">
               <div className="empty-catalog__mark"><Leaf size={32} strokeWidth={1.1} /></div>
               <div><span className="empty-catalog__eyebrow">{t("emptyEyebrow")}</span><h3>{t("emptyTitle")}</h3><p>{t("emptyBody")}</p></div>
               <a className="button button--outline" href={whatsappLink} target="_blank" rel="noreferrer">{t("ask")} <ArrowUpRight size={17} /></a>
@@ -428,6 +447,7 @@ export default function Home() {
           <div className="footer__links">
             <a href="#progetto">{t("project")}</a>
             <a href="/nutrition">{t("nutrition")}</a>
+            <a href="/plants">{t("plants")}</a>
             <a href="#catalogo">{t("catalog")}</a>
             <a href="#contatti">{t("contact")}</a>
           </div>

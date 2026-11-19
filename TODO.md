@@ -1,30 +1,32 @@
 # Renacer — Barbara Claps Ibiza
 
-## معلومات العلامة
-- [x] اعتماد المعلومات المؤكدة من الموقع الأصلي: Renacer، Bárbara/Barbara Claps، Ibiza، ومستشارة تغذية طبيعية وشمولية.
-- [x] اعتماد WhatsApp الرسمي: +34 646 072 140.
-- [x] عدم اعتبار Gold Cream اسم المتجر؛ يظهر في الموقع الأصلي كاسم/وصف منتج.
-- [x] عدم اختراع منتجات أو أسعار أو صور عبوات.
+## Brand and existing storefront outcomes
+- [x] Use confirmed project identity: Renacer, Barbara/Bárbara Claps, Ibiza; retain the existing Italian, English and Spanish storefront and the direct WhatsApp contact.
+- [x] Keep product and article management in separate admin sections, categories independently manageable, product cards in a gallery, Nutrition articles on `/nutrition` with excerpts and “Learn more” links, and an admin logout control.
+- [x] Keep admin access protected by the existing server-validated PIN session; never write PIN values into source control.
+- [x] Keep existing live product, category and article records intact during the new work.
 
-## الموقع العام
-- [x] دعم الإيطالية والإنجليزية والإسبانية.
-- [x] اختيار اللغة حسب البلد عند الإمكان مع مبدّل لغة يدوي.
-- [x] عرض قصة Barbara وRenacer ومعلومات التغذية دون ادعاءات طبية.
-- [x] إبقاء الكتالوج فارغًا حتى تضيف Barbara المنتجات الحقيقية.
-- [x] إبقاء WhatsApp قناة الطلب والاستفسار الأساسية.
+## Requested hero photo
+- [ ] Replace the homepage photo beside “Back to yourself slowly.” with the newly supplied client photo at `/home/ubuntu/upload/image-1.webp`, without editing or visually reopening the original; ensure it renders attractively and responsively on desktop and mobile.
 
-## لوحة الإدارة والمنتجات
-- [x] فتح لوحة الإدارة عبر PIN يُتحقق منه على الخادم، مع جلسة مؤقتة بملف cookie آمن.
-- [x] استخدام PIN المقدم من المستخدم: 15112026، محفوظًا كسر ADMIN_PIN وليس داخل الواجهة.
-- [x] إضافة وتعديل وحذف المنتجات مع السعر والوصف والصورة ورسالة WhatsApp.
-- [x] توليد ترجمات المنتج بالإيطالية والإنجليزية والإسبانية مع إمكانية المراجعة.
-- [x] توليد Buy now وQR WhatsApp لكل منتج منشور.
+## Product INCI
+- [ ] Add an optional INCI ingredients field for every product in the owner’s admin create/edit form; persist and reload it for existing/new products without breaking other product fields.
+- [ ] Show a clear, expandable INCI ingredients section on public product cards only when a formula exists; preserve the entered INCI list without translating ingredient names.
+- [ ] Do not invent or infer an INCI formula: leave it empty unless already explicitly present in the product data or entered by the owner.
 
-## الربط الخارجي
-- [x] ربط المشروع بحساب GitHub بعد تسجيل الدخول والموافقة، ثم نقل المستودع من Manus إلى GitHub.
-- [x] تجهيز واجهة المتجر العامة للنشر على GitHub Pages تحت مسار المستودع، مع قراءة المنتجات المنشورة من Supabase عبر المفتاح العام وسياسة RLS.
-- [ ] تفعيل GitHub Pages من إعدادات المستودع ثم التحقق من رابط `github.io` النهائي.
-- [x] إنشاء مشروع Supabase مجاني باسم Renacer Ibiza.
-- [x] إنشاء جدول المنتجات في Supabase مع RLS، بدون أي seed data.
-- [x] ربط فحص الاتصال وعمليات CRUD في الخادم بـ Supabase عند توفر المفاتيح السرية.
-- [ ] عدم إضافة منتجات حقيقية إلى قاعدة البيانات قبل تأكيد Barbara.
+## Plants and raw materials
+- [ ] Add a browsable `/plants` section inspired by `https://barbara-botanica-ibiza.foldedrice.chatgpt.site/`, listing plants/raw materials with translated names, careful descriptions of cosmetic-context properties, source links where the reference supplies exact URLs, and relevant safety notes.
+- [ ] Keep public content in Italian, English and Spanish and make the section reachable from the main navigation and footer.
+- [ ] Add an owner-editable plants/materials catalogue and product-to-material assignments in dedicated admin controls; allow the owner to enter/edit localized names, properties, source URL and caution text.
+- [ ] On each published product, show links to the materials explicitly assigned to it; on each material entry, show links to published products explicitly assigned to it. Keep unconfirmed product-material links unassigned until the owner verifies them.
+- [ ] Do not make medical/treatment claims; retain source-supported safety cautions, including hypericum/UV exposure, potential allergens, and burns/wounds.
+
+## Production integrity and delivery
+- [ ] Apply an additive Supabase migration for nullable product INCI and botanical/material data with appropriate public-read policies; preserve all current production rows and media.
+- [ ] Extend the existing `renacer-admin` Edge Function without weakening PIN/session checks, and keep the current admin product/category/article/settings flows working.
+- [ ] Keep `client/public/manus-routes.json` synchronized with `/plants`.
+- [ ] Pass `pnpm check`, `pnpm test`, and `pnpm build:static`; verify the plant route, public data reads, admin persistence paths, static bundle, image response and deployed GitHub Pages site.
+- [ ] Push the completed intended change to `origin/main`, wait for the Pages workflow, and confirm the deployed site works before marking these requested outcomes complete.
+
+## Payment confirmation
+- [ ] Do not state that the bank transfer succeeded: no bank record or payment evidence is available in this session. Ask the client to confirm through their bank if confirmation is required.

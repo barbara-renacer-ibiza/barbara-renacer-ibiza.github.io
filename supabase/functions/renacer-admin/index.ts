@@ -126,6 +126,29 @@ async function resolveCategorySlug(product: Record<string, unknown>) {
   return String(match?.slug || "altro");
 }
 
+async function syncProductPlantMaterials(productId: number, rawSlugs: unknown) {
+  if (!Array.isArray(rawSlugs) || rawSlugs.length > 100) return { ok: false, status: 400, data: { message: "Elenco materie prime non valido." } };
+  const slugs = [...new Set(rawSlugs.map((value) => String(value)).filter((value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)))];
+  if (slugs.length !== rawSlugs.length) return { ok: false, status: 400, data: { message: "Una o più materie prime selezionate non sono valide." } };
+  if (slugs.length) {
+    const available = await db(`plant_materials?select=slug&slug=in.(${slugs.join(",")})&limit=100`);
+    if (!available.ok) return available;
+    if (!Array.isArray(available.data) || available.data.length !== slugs.length) return { ok: false, status: 400, data: { message: "Una o più materie prime non esistono più." } };
+  }
+  if (slugs.length) {
+    const added = await db("product_plant_materials?on_conflict=productId,plantSlug", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(slugs.map((plantSlug) => ({ productId, plantSlug }))),
+    });
+    if (!added.ok) return added;
+  }
+  const relationPath = slugs.length
+    ? `product_plant_materials?productId=eq.${productId}&plantSlug=not.in.(${slugs.join(",")})`
+    : `product_plant_materials?productId=eq.${productId}`;
+  return await db(relationPath, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+}
+
 const imageTypes: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -164,15 +187,24 @@ Deno.serve(async (req: Request) => {
     if (!(await tokenOk(req.headers.get("x-renacer-token")))) return json({ error: "Sessione scaduta. Accedi di nuovo." }, 401);
 
     if (action === "list") {
-      const [products, articles, categories] = await Promise.all([
+      const [products, articles, categories, plantMaterials, productPlantMaterials] = await Promise.all([
         db("products?select=*&order=createdAt.desc&limit=500"),
         db("nutrition_articles?select=*&order=createdAt.desc&limit=500"),
         db("categories?select=*&order=nameIt.asc&limit=500"),
+        db("plant_materials?select=*&order=nameIt.asc&limit=1000"),
+        db("product_plant_materials?select=productId,plantSlug&limit=5000"),
       ]);
-      for (const result of [products, articles, categories]) {
+      for (const result of [products, articles, categories, plantMaterials, productPlantMaterials]) {
         if (!result.ok) return json({ error: `Errore nel caricamento dei contenuti: ${errorMessage(result.data)}` }, result.status);
       }
-      return json({ products: products.data, articles: articles.data, categories: categories.data });
+      const slugsByProduct = new Map<number, string[]>();
+      if (Array.isArray(productPlantMaterials.data)) {
+        for (const relation of productPlantMaterials.data as Array<{ productId: number; plantSlug: string }>) {
+          slugsByProduct.set(relation.productId, [...(slugsByProduct.get(relation.productId) || []), relation.plantSlug]);
+        }
+      }
+      const productRows = Array.isArray(products.data) ? products.data.map((item: Record<string, unknown>) => ({ ...item, plantSlugs: slugsByProduct.get(Number(item.id)) || [] })) : products.data;
+      return json({ products: productRows, articles: articles.data, categories: categories.data, plantMaterials: plantMaterials.data });
     }
 
     if (action === "change_pin") {
@@ -223,17 +255,87 @@ Deno.serve(async (req: Request) => {
     if (action === "create" || action === "update") {
       const p = body.product || {};
       const categorySlug = await resolveCategorySlug(p);
+      const inci = p.INCI == null ? null : String(p.INCI).trim();
+      if (inci && inci.length > 20000) return json({ error: "Il testo INCI supera la lunghezza massima consentita." }, 400);
       const data = {
         sourceLanguage: "it", nameIt: p.nameIt, descriptionIt: p.descriptionIt,
         nameEn: p.nameEn, descriptionEn: p.descriptionEn, nameEs: p.nameEs, descriptionEs: p.descriptionEs,
         priceCents: p.priceCents, currency: p.currency || "EUR", imageUrl: p.imageUrl || null,
-        whatsappMessage: p.whatsappMessage || null, category: p.categoryName || p.category || categorySlug,
+        whatsappMessage: p.whatsappMessage || null, INCI: inci || null, category: p.categoryName || p.category || categorySlug,
         categorySlug, isPublished: p.isPublished ?? 1,
       };
       const result = action === "create"
         ? await db("products", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...data, slug: `${cleanSlug(String(p.nameIt || "product"))}-${Date.now()}` }) })
         : await db(`products?id=eq.${encodeURIComponent(String(body.id))}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) });
-      return writeResult(result);
+      if (!result.ok) return writeResult(result);
+      const savedRow = Array.isArray(result.data) ? result.data[0] : null;
+      if (!savedRow) return writeResult(result);
+      if (p.plantSlugs !== undefined) {
+        const links = await syncProductPlantMaterials(Number(savedRow.id), p.plantSlugs);
+        if (!links.ok) return json({ error: `Il prodotto è stato salvato, ma i collegamenti alle materie prime non sono stati aggiornati: ${errorMessage(links.data)}` }, links.status);
+      }
+      return json(savedRow);
+    }
+
+    if (action === "material_create") {
+      const m = body.material || {};
+      const fields = ["nameIt", "nameEn", "nameEs", "descriptionIt", "descriptionEn", "descriptionEs"] as const;
+      const data: Record<string, unknown> = {};
+      for (const field of fields) {
+        const value = String(m[field] || "").trim();
+        if (!value || value.length > (field.startsWith("description") ? 8000 : 180)) return json({ error: "Completa i nomi e le descrizioni in italiano, inglese e spagnolo (entro la lunghezza consentita)." }, 400);
+        data[field] = value;
+      }
+      const botanicalName = String(m.botanicalName || "").trim();
+      if (botanicalName.length > 180) return json({ error: "Il nome botanico è troppo lungo." }, 400);
+      const sourceUrl = String(m.sourceUrl || "").trim();
+      if (sourceUrl && (!/^https:\/\//i.test(sourceUrl) || sourceUrl.length > 2048)) return json({ error: "Il link della fonte deve essere HTTPS e non superare 2048 caratteri." }, 400);
+      for (const field of ["safetyIt", "safetyEn", "safetyEs"] as const) {
+        const value = String(m[field] || "").trim();
+        if (value.length > 2000) return json({ error: "Una nota di cautela è troppo lunga." }, 400);
+        data[field] = value || null;
+      }
+      data.botanicalName = botanicalName || null;
+      data.sourceUrl = sourceUrl || null;
+      data.isActive = true;
+      const slug = `${cleanSlug(String(m.nameIt))}-${Date.now().toString(36)}`;
+      return writeResult(await db("plant_materials", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ slug, ...data }) }));
+    }
+
+    if (action === "material_update") {
+      const m = body.material || {};
+      const data: Record<string, unknown> = {};
+      for (const field of ["nameIt", "nameEn", "nameEs", "descriptionIt", "descriptionEn", "descriptionEs"] as const) {
+        if (m[field] === undefined) continue;
+        const value = String(m[field]).trim();
+        if (!value || value.length > (field.startsWith("description") ? 8000 : 180)) return json({ error: "I nomi e le descrizioni devono essere compilati e rispettare la lunghezza consentita." }, 400);
+        data[field] = value;
+      }
+      if (m.botanicalName !== undefined) {
+        const value = String(m.botanicalName || "").trim();
+        if (value.length > 180) return json({ error: "Il nome botanico è troppo lungo." }, 400);
+        data.botanicalName = value || null;
+      }
+      if (m.sourceUrl !== undefined) {
+        const value = String(m.sourceUrl || "").trim();
+        if (value && (!/^https:\/\//i.test(value) || value.length > 2048)) return json({ error: "Il link della fonte deve essere HTTPS e non superare 2048 caratteri." }, 400);
+        data.sourceUrl = value || null;
+      }
+      for (const field of ["safetyIt", "safetyEn", "safetyEs"] as const) {
+        if (m[field] === undefined) continue;
+        const value = String(m[field] || "").trim();
+        if (value.length > 2000) return json({ error: "Una nota di cautela è troppo lunga." }, 400);
+        data[field] = value || null;
+      }
+      if (m.isActive !== undefined) {
+        if (typeof m.isActive !== "boolean") return json({ error: "Stato materia prima non valido." }, 400);
+        data.isActive = m.isActive;
+      }
+      if (!Object.keys(data).length) return json({ error: "Nessuna modifica da salvare." }, 400);
+      const slug = String(body.slug || "").trim();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return json({ error: "Materia prima non valida." }, 400);
+      data.updatedAt = new Date().toISOString();
+      return writeResult(await db(`plant_materials?slug=eq.${encodeURIComponent(slug)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) }));
     }
 
     if (action === "article_create" || action === "article_update") {

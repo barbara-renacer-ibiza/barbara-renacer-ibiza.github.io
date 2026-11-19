@@ -1,28 +1,24 @@
 # Renacer — Barbara Claps Ibiza
 
-## المعلومات المؤكدة من الموقع الأصلي
-- اسم المشروع الظاهر في القصة: Renacer.
-- صاحبة المشروع: Bárbara / Barbara Claps.
-- الموقع: Ibiza, Spain.
-- الوصف المهني الظاهر: Certified natural and holistic nutrition adviser.
-- قناة التواصل: WhatsApp على الرقم +34 646 072 140.
-- Gold Cream اسم منتج/وصف ظاهر في الموقع الأصلي، وليس اسم المشروع المؤكد.
-- المنتجات الحقيقية والصور والأسعار لا تُضاف من عندنا؛ تدخلها Barbara من لوحة الإدارة بعد التأكيد.
+## Confirmed brand and system facts
+Renacer is Barbara Claps’s personal project in Ibiza. The public website is `https://barbara-renacer-ibiza.github.io/`, with the PIN-protected admin at `/admin`. The storefront supports Italian, English and Spanish; Supabase project `dybqvnthmfeatwfpysrv` stores the live catalogue and `renacer-admin` is its server-side admin gateway. Do not expose or duplicate PIN values in the repository. Existing production rows are real and must remain intact.
 
-## التنفيذ
-- تصحيح النصوص العامة لتتحدث عن Barbara Claps وRenacer بدل معلومات مختلقة.
-- دعم الإيطالية والإنجليزية والإسبانية مع الترجمة الآلية للمنتجات.
-- حماية لوحة الإدارة بجلسة خادم PIN، مع حفظ ADMIN_PIN كسر في إعدادات المشروع.
-- إبقاء WhatsApp وQR مرتبطين بكل منتج عند النشر.
-- إبقاء قاعدة البيانات قابلة للنقل إلى Supabase بعد تسجيل حساب المستخدم وربطه.
-- ربط GitHub لاحقًا عبر موصل GitHub بعد اكتمال تسجيل الدخول؛ لا نعتبر المشروع مربوطًا قبل ظهور مستودع GitHub في إعدادات المشروع.
+## Current requested changes
+Replace the existing home hero image beside “Back to yourself slowly.” with the image supplied by the client, preserving the original pixels/aspect ratio in the stored asset and using responsive image-fit styling. Add a nullable INCI text field to each product and allow the owner to edit it in the authenticated admin form; only retain formula text already explicitly provided in a live product record, and never infer missing ingredient lists. Add an editable raw-material/plant catalogue inspired by the client's reference site, including translated names and carefully worded cosmetic-context properties, source links where the reference provides them, and restrained safety notes. Add product-to-material assignments in the admin product editor, a browsable `/plants` route in Italian/English/Spanish, and related-material links from published product cards. Relations must be explicit and owner-editable; do not guess which materials occur in which existing products.
 
-## التصميم
-- **الحركة:** Editorial Mediterranean botanical، دافئة ومضيئة وهادئة.
-- **المبادئ:** معلومات صادقة، مساحة بيضاء، لمسات نباتية، وواجهة سهلة على الهاتف.
-- **الألوان:** كريمي وخضراء زيتونية وتيراكوتا؛ لتبقى قريبة من Ibiza والطبيعة دون خلفية مظلمة.
-- **التخطيط:** صفحة قصصية غير مزدحمة، مع قسم منتجات واضح ولوحة إدارة منفصلة.
-- **العناصر المميزة:** العلامة النباتية، صورة Barbara قرب نهاية الصفحة، وبطاقات منتجات لها Buy now وQR WhatsApp.
-- **التفاعل:** اللغة تتبدل يدويًا أو حسب البلد، والمنتج يرسل المستخدم مباشرة إلى WhatsApp.
-- **الهوية:** Renacer — عناية شخصية من Ibiza، تقودها Barbara Claps.
-- **الصوت:** شخصي، صادق، هادئ؛ لا يضيف وعودًا طبية أو معلومات غير مؤكدة.
+## Implementation and serving
+- `client/src/pages/Home.tsx` remains the multilingual storefront and published-product gallery. It reads the product INCI and published product/material links through the Supabase public REST API, then renders an optional expandable INCI section and links to `/plants?plant=<slug>`.
+- `client/src/pages/Plants.tsx` is the public botanical/raw-material catalogue. It consumes only active entries and their published-product links, presents restrained property/safety copy, source links and links back to related products. Add `/plants` to `client/src/App.tsx` and synchronize `client/public/manus-routes.json`.
+- `client/src/pages/Admin.tsx` continues to protect all write actions using the current server-issued session. Extend its product editor with INCI and multi-select material links; add a dedicated materials section to create/edit entries and attach verified source/safety details. Keep all current product/article/category/PIN flows intact.
+- `supabase/migrations/` gets a non-destructive migration adding nullable `products.INCI`, a `plant_materials` table and a many-to-many `product_plant_materials` table. Enable RLS and grant public reads only for active materials and links to published products. No product rows or existing media are deleted or rewritten.
+- Extend `renacer-admin` with validated authenticated CRUD/list actions for material records and product links, persisting through its service-role REST client. Public storefront reads use the Supabase REST API under the new RLS policies. Preserve the current PIN/session validation, CORS allowlist and existing actions.
+- Replace `client/public/images/renacer-collection.webp` with the supplied image; do not reopen it visually. Keep Vite's static build and GitHub Pages base-path behavior.
+
+## Project structure
+`client/src/pages/` owns Home, Nutrition, Plants and Admin route views; `client/src/index.css` owns responsive storefront and dashboard styling; `client/public/` owns the static route manifest and browser images; `supabase/migrations/` records schema changes; the deployed `renacer-admin` Edge Function owns PIN-validated writes and safe public read actions. The GitHub Pages production client reads only published public content from Supabase.
+
+## Design direction
+Continue the existing warm Mediterranean botanical editorial style rather than introducing a new visual system. Use the client's selected photograph as the hero focal point, rounded botanical cards, olive/cream/terracotta colors, restrained spacing and mobile-first responsive layout. The plant page should feel like a calm field guide: clear botanical names, short useful property text, source links and visible caution copy without medical promises. Keep admin forms separated by their existing route sections and add plants as its own section.
+
+## Data integrity and safety
+The source reference: `https://barbara-botanica-ibiza.foldedrice.chatgpt.site/ingredients`. Cite its exact external links only where known. Properties are cosmetic-context descriptions, not health or treatment claims; preserve warnings about hypericum/UV, allergens, and fresh burns. Do not claim all seeded references are constituents of a specific product. Product-material links stay empty until the owner confirms them. For products without an explicit verified formula, leave INCI blank.

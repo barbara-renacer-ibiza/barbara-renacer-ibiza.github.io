@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import Nutrition from "./pages/Nutrition";
+import Plants from "./pages/Plants";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -16,6 +17,7 @@ function Router() {
         <Route path={"/"} component={Home} />
         <Route path={"/nutrition/:slug"} component={Nutrition} />
         <Route path={"/nutrition"} component={Nutrition} />
+        <Route path={"/plants"} component={Plants} />
         <Route path={"/admin"} component={Admin} />
         <Route path={"/admin/:section"} component={Admin} />
         <Route path={"/404"} component={NotFound} />

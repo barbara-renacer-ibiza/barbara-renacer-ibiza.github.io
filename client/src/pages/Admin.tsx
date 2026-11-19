@@ -21,6 +21,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Sprout,
   Trash2,
 } from "lucide-react";
 
@@ -38,6 +39,8 @@ type Product = {
   categorySlug: string;
   imageUrl: string | null;
   whatsappMessage: string | null;
+  INCI: string | null;
+  plantSlugs: string[];
   isPublished: number;
 };
 type Article = {
@@ -59,18 +62,21 @@ type Category = {
   nameEs: string;
   isActive: boolean;
 };
-type ProductForm = { name: string; description: string; price: string; categorySlug: string; imageUrl: string; whatsappMessage: string };
+type PlantMaterial = { slug: string; nameIt: string; nameEn: string; nameEs: string; botanicalName: string; descriptionIt: string; descriptionEn: string; descriptionEs: string; safetyIt: string; safetyEn: string; safetyEs: string; sourceUrl: string | null; isActive: boolean };
+type PlantForm = { nameIt: string; nameEn: string; nameEs: string; botanicalName: string; descriptionIt: string; descriptionEn: string; descriptionEs: string; safetyIt: string; safetyEn: string; safetyEs: string; sourceUrl: string };
+type ProductForm = { name: string; description: string; price: string; categorySlug: string; imageUrl: string; whatsappMessage: string; INCI: string; plantSlugs: string[] };
 type ProductTranslations = { en: { name: string; description: string }; es: { name: string; description: string } };
 type ArticleForm = { title: string; body: string; imageUrl: string };
 type CategoryForm = { nameIt: string; nameEn: string; nameEs: string; isActive: boolean };
-type AdminSection = "overview" | "products" | "categories" | "articles" | "settings";
+type AdminSection = "overview" | "products" | "categories" | "plants" | "articles" | "settings";
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
 const supabaseKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
 const adminFunctionUrl = `${supabaseUrl}/functions/v1/renacer-admin`;
-const blankProduct: ProductForm = { name: "", description: "", price: "", categorySlug: "", imageUrl: "", whatsappMessage: "" };
+const blankProduct: ProductForm = { name: "", description: "", price: "", categorySlug: "", imageUrl: "", whatsappMessage: "", INCI: "", plantSlugs: [] };
 const blankArticle: ArticleForm = { title: "", body: "", imageUrl: "" };
 const blankCategory: CategoryForm = { nameIt: "", nameEn: "", nameEs: "", isActive: true };
+const blankPlant: PlantForm = { nameIt: "", nameEn: "", nameEs: "", botanicalName: "", descriptionIt: "", descriptionEn: "", descriptionEs: "", safetyIt: "", safetyEn: "", safetyEs: "", sourceUrl: "" };
 
 class AdminRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -126,6 +132,7 @@ const navItems: { id: AdminSection; label: string; icon: typeof Package; descrip
   { id: "overview", label: "Panoramica", icon: Sparkles, description: "Lo spazio di lavoro" },
   { id: "products", label: "Prodotti", icon: Package, description: "Schede e pubblicazione" },
   { id: "categories", label: "Categorie", icon: FolderTree, description: "Organizza i rituali" },
+  { id: "plants", label: "Piante e materie", icon: Sprout, description: "Ingredienti e collegamenti" },
   { id: "articles", label: "Articoli", icon: BookOpen, description: "Journal Nutrition" },
   { id: "settings", label: "PIN e sicurezza", icon: Settings2, description: "Accesso personale" },
 ];
@@ -133,7 +140,7 @@ const navItems: { id: AdminSection; label: string; icon: typeof Package; descrip
 export default function Admin() {
   const [location] = useLocation();
   const sectionPart = location.replace(/^\/admin\/?/, "").split("/")[0];
-  const section: AdminSection = ["products", "categories", "articles", "settings"].includes(sectionPart) ? sectionPart as AdminSection : "overview";
+  const section: AdminSection = ["products", "categories", "plants", "articles", "settings"].includes(sectionPart) ? sectionPart as AdminSection : "overview";
   const [pin, setPin] = useState("");
   const [unlocked, setUnlocked] = useState(hasValidAdminSession);
   const [pinError, setPinError] = useState("");
@@ -142,14 +149,17 @@ export default function Admin() {
   const [products, setProducts] = useState<Product[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [plantMaterials, setPlantMaterials] = useState<PlantMaterial[]>([]);
   const [product, setProduct] = useState<ProductForm>(blankProduct);
   const [article, setArticle] = useState<ArticleForm>(blankArticle);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(blankCategory);
+  const [plantForm, setPlantForm] = useState<PlantForm>(blankPlant);
   const [productTranslations, setProductTranslations] = useState<ProductTranslations | null>(null);
   const [translationSource, setTranslationSource] = useState("");
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [editingArticle, setEditingArticle] = useState<number | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingPlant, setEditingPlant] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [imageUploading, setImageUploading] = useState<"product" | "article" | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
@@ -167,6 +177,7 @@ export default function Admin() {
     setProducts(Array.isArray(data.products) ? data.products : []);
     setArticles(Array.isArray(data.articles) ? data.articles : []);
     setCategories(Array.isArray(data.categories) ? data.categories : []);
+    setPlantMaterials(Array.isArray(data.plantMaterials) ? data.plantMaterials : []);
   };
 
   const logout = (expired = false) => {
@@ -285,6 +296,8 @@ export default function Admin() {
         categoryName: chosenCategory?.nameIt || "Altro",
         imageUrl: product.imageUrl.trim() || null,
         whatsappMessage: product.whatsappMessage.trim() || null,
+        INCI: product.INCI.trim() || null,
+        plantSlugs: product.plantSlugs,
         isPublished: editingProduct ? (products.find((item) => item.id === editingProduct)?.isPublished ?? 0) : 1,
       };
       await adminRequest(editingProduct ? "update" : "create", { id: editingProduct, product: data });
@@ -301,8 +314,54 @@ export default function Admin() {
     setEditingProduct(item.id);
     setProductTranslations(null); setTranslationSource("");
     const matchingCategory = categories.find((category) => category.slug === item.categorySlug || category.nameIt === item.category);
-    setProduct({ name: item.nameIt, description: item.descriptionIt, price: (item.priceCents / 100).toFixed(2), categorySlug: matchingCategory?.slug || item.categorySlug || "altro", imageUrl: item.imageUrl || "", whatsappMessage: item.whatsappMessage || "" });
+    setProduct({ name: item.nameIt, description: item.descriptionIt, price: (item.priceCents / 100).toFixed(2), categorySlug: matchingCategory?.slug || item.categorySlug || "altro", imageUrl: item.imageUrl || "", whatsappMessage: item.whatsappMessage || "", INCI: item.INCI || "", plantSlugs: item.plantSlugs || [] });
     setError(""); setNotice("");
+  };
+
+  const savePlant = async () => {
+    const data = {
+      nameIt: plantForm.nameIt.trim(), nameEn: plantForm.nameEn.trim(), nameEs: plantForm.nameEs.trim(),
+      botanicalName: plantForm.botanicalName.trim() || null,
+      descriptionIt: plantForm.descriptionIt.trim(), descriptionEn: plantForm.descriptionEn.trim(), descriptionEs: plantForm.descriptionEs.trim(),
+      safetyIt: plantForm.safetyIt.trim() || null, safetyEn: plantForm.safetyEn.trim() || null, safetyEs: plantForm.safetyEs.trim() || null,
+      sourceUrl: plantForm.sourceUrl.trim() || null,
+      isActive: editingPlant ? plantMaterials.find((item) => item.slug === editingPlant)?.isActive ?? true : true,
+    };
+    if (!data.nameIt || !data.nameEn || !data.nameEs || !data.descriptionIt || !data.descriptionEn || !data.descriptionEs) {
+      setError("Completa i nomi e le descrizioni in italiano, inglese e spagnolo.");
+      return;
+    }
+    if (data.sourceUrl) {
+      try { if (new URL(data.sourceUrl).protocol !== "https:") throw new Error(); }
+      catch { setError("Il link della fonte deve iniziare con https://."); return; }
+    }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await adminRequest(editingPlant ? "material_update" : "material_create", { slug: editingPlant, material: data });
+      await load(); setPlantForm(blankPlant); setEditingPlant(null);
+      setNotice(editingPlant ? "Materia prima aggiornata." : "Materia prima aggiunta alla guida.");
+    } catch (saveError) {
+      if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
+      else setError(saveError instanceof Error ? saveError.message : "Salvataggio della materia prima non riuscito.");
+    } finally { setBusy(false); }
+  };
+
+  const beginPlantEdit = (item: PlantMaterial) => {
+    setEditingPlant(item.slug);
+    setPlantForm({ nameIt: item.nameIt, nameEn: item.nameEn, nameEs: item.nameEs, botanicalName: item.botanicalName || "", descriptionIt: item.descriptionIt, descriptionEn: item.descriptionEn, descriptionEs: item.descriptionEs, safetyIt: item.safetyIt || "", safetyEn: item.safetyEn || "", safetyEs: item.safetyEs || "", sourceUrl: item.sourceUrl || "" });
+    setError(""); setNotice("");
+  };
+
+  const togglePlant = async (item: PlantMaterial) => {
+    setError(""); setNotice("");
+    try {
+      await adminRequest("material_update", { slug: item.slug, material: { isActive: !item.isActive } });
+      await load();
+      setNotice(item.isActive ? "Materia prima nascosta dalla guida pubblica." : "Materia prima attivata.");
+    } catch (toggleError) {
+      if (toggleError instanceof AdminRequestError && toggleError.status === 401) logout(true);
+      else setError(toggleError instanceof Error ? toggleError.message : "Stato della materia prima non aggiornato.");
+    }
   };
 
   const saveArticle = async () => {
@@ -437,7 +496,7 @@ export default function Admin() {
 
         <main className="admin-content">
           <div className="admin-content__topline"><span>{sectionMeta.description}</span><a href="/" target="_blank" rel="noreferrer">Apri il sito <ExternalLink size={13} /></a></div>
-          <div className="admin-page-heading"><div><span className="admin-eyebrow"><Sparkles size={13} /> {sectionMeta.label}</span><h1>{section === "overview" ? <>Gestione<br /><em>con calma.</em></> : section === "products" ? <>La galleria<br /><em>dei prodotti.</em></> : section === "categories" ? <>Organizza<br /><em>i rituali.</em></> : section === "articles" ? <>Nutrition<br /><em>journal.</em></> : <>Impostazioni<br /><em>personali.</em></>}</h1></div><p>{section === "overview" ? "Uno spazio ordinato per raccontare i prodotti e le storie di Renacer. Ogni area ha la sua sezione: semplice da trovare, semplice da aggiornare." : section === "products" ? "Crea le schede, scegli la categoria e carica le immagini. I prodotti salvati vengono pubblicati nel catalogo." : section === "categories" ? "Crea le categorie dei tuoi rituali, aggiorna i nomi o nascondi quelle che non usi. Lo slug stabile mantiene i prodotti collegati anche se cambi il nome." : section === "articles" ? "Scrivi gli articoli Nutrition: in homepage appare solo un estratto, mentre il testo completo vive nella sua pagina dedicata." : "Cambia il PIN quando vuoi. Dopo l'aggiornamento la sessione termina e dovrai accedere con il nuovo codice."}</p></div>
+          <div className="admin-page-heading"><div><span className="admin-eyebrow"><Sparkles size={13} /> {sectionMeta.label}</span><h1>{section === "overview" ? <>Gestione<br /><em>con calma.</em></> : section === "products" ? <>La galleria<br /><em>dei prodotti.</em></> : section === "categories" ? <>Organizza<br /><em>i rituali.</em></> : section === "plants" ? <>Piante e<br /><em>materie prime.</em></> : section === "articles" ? <>Nutrition<br /><em>journal.</em></> : <>Impostazioni<br /><em>personali.</em></>}</h1></div><p>{section === "overview" ? "Uno spazio ordinato per raccontare i prodotti e le storie di Renacer. Ogni area ha la sua sezione: semplice da trovare, semplice da aggiornare." : section === "products" ? "Crea le schede, scegli la categoria e carica le immagini. Inserisci l’INCI quando la formula è stata verificata e collega solo le materie prime confermate." : section === "categories" ? "Crea le categorie dei tuoi rituali, aggiorna i nomi o nascondi quelle che non usi. Lo slug stabile mantiene i prodotti collegati anche se cambi il nome." : section === "plants" ? "Crea o aggiorna le schede delle piante e delle materie prime. Le relazioni con i prodotti sono modificabili nella scheda di ciascun prodotto." : section === "articles" ? "Scrivi gli articoli Nutrition: in homepage appare solo un estratto, mentre il testo completo vive nella sua pagina dedicata." : "Cambia il PIN quando vuoi. Dopo l'aggiornamento la sessione termina e dovrai accedere con il nuovo codice."}</p></div>
 
           {error && <p className="admin-error admin-alert"><Info size={14} /> {error}</p>}
           {notice && <p className="admin-success admin-alert"><CheckCircle2 size={14} /> {notice}</p>}
@@ -447,13 +506,15 @@ export default function Admin() {
               <div className="admin-overview__stats">
                 <article><span><Package size={16} /> Prodotti pubblicati</span><strong>{publishedProducts}<small> / {products.length}</small></strong></article>
                 <article><span><FolderTree size={16} /> Categorie attive</span><strong>{activeCategories.length}<small> / {categories.length}</small></strong></article>
+                <article><span><Sprout size={16} /> Materie attive</span><strong>{plantMaterials.filter((item) => item.isActive).length}<small> / {plantMaterials.length}</small></strong></article>
                 <article><span><BookOpen size={16} /> Articoli online</span><strong>{publishedArticles}<small> / {articles.length}</small></strong></article>
               </div>
               <div className="admin-shortcuts">
                 <Link href="/admin/products" className="admin-shortcut"><span className="admin-shortcut__icon"><Package size={20} /></span><div><small>01 · Catalogo</small><strong>Gestisci i prodotti</strong><p>Aggiungi immagini, prezzi e categoria.</p></div><ArrowRight size={18} /></Link>
                 <Link href="/admin/categories" className="admin-shortcut"><span className="admin-shortcut__icon"><FolderTree size={20} /></span><div><small>02 · Organizzazione</small><strong>Modifica le categorie</strong><p>Assegna ogni prodotto al suo rituale.</p></div><ArrowRight size={18} /></Link>
-                <Link href="/admin/articles" className="admin-shortcut"><span className="admin-shortcut__icon"><BookOpen size={20} /></span><div><small>03 · Journal</small><strong>Scrivi un articolo</strong><p>Anteprime brevi e pagine complete.</p></div><ArrowRight size={18} /></Link>
-                <Link href="/admin/settings" className="admin-shortcut"><span className="admin-shortcut__icon"><KeyRound size={20} /></span><div><small>04 · Sicurezza</small><strong>Cambia il PIN</strong><p>Impostazione separata e protetta.</p></div><ArrowRight size={18} /></Link>
+                <Link href="/admin/plants" className="admin-shortcut"><span className="admin-shortcut__icon"><Sprout size={20} /></span><div><small>03 · Materie prime</small><strong>Gestisci le piante</strong><p>Descrivi ingredienti e fonti.</p></div><ArrowRight size={18} /></Link>
+                <Link href="/admin/articles" className="admin-shortcut"><span className="admin-shortcut__icon"><BookOpen size={20} /></span><div><small>04 · Journal</small><strong>Scrivi un articolo</strong><p>Anteprime brevi e pagine complete.</p></div><ArrowRight size={18} /></Link>
+                <Link href="/admin/settings" className="admin-shortcut"><span className="admin-shortcut__icon"><KeyRound size={20} /></span><div><small>05 · Sicurezza</small><strong>Cambia il PIN</strong><p>Impostazione separata e protetta.</p></div><ArrowRight size={18} /></Link>
               </div>
               <div className="admin-overview__note"><Leaf size={17} /><p><strong>Una piccola nota</strong><br />Scrivi in italiano: le traduzioni per i visitatori vengono preparate automaticamente, poi puoi controllarle nella scheda prima di salvare.</p></div>
             </section>
@@ -468,6 +529,10 @@ export default function Admin() {
                 <div className="admin-extra-grid admin-product-fields">
                   <label>Prezzo (EUR)<input type="number" min="0" step="0.01" value={product.price} onChange={(event) => setProduct({ ...product, price: event.target.value })} placeholder="0,00" /></label>
                   <label>Categoria<select value={product.categorySlug || activeCategories[0]?.slug || ""} onChange={(event) => setProduct({ ...product, categorySlug: event.target.value })}><option value="" disabled>Seleziona una categoria</option>{categories.find((item) => item.slug === product.categorySlug && !item.isActive) ? <option value={product.categorySlug} disabled>{categoryName(product.categorySlug)} · disattivata</option> : null}{activeCategories.map((item) => <option key={item.slug} value={item.slug}>{item.nameIt}</option>)}</select></label>
+                </div>
+                <div className="admin-form-grid admin-inci-grid">
+                  <label>INCI · ingredienti<textarea rows={5} value={product.INCI} onChange={(event) => setProduct({ ...product, INCI: event.target.value })} placeholder="Incolla la lista INCI verificata, senza tradurla…" /><small>Lascia vuoto se la composizione non è ancora stata verificata.</small></label>
+                  <fieldset className="admin-material-assignment"><legend>Materie prime collegate</legend><p>Seleziona solo quelle confermate nella composizione di questo prodotto.</p><div className="admin-material-options">{plantMaterials.map((item) => <label key={item.slug}><input type="checkbox" checked={product.plantSlugs.includes(item.slug)} onChange={(event) => setProduct((value) => ({ ...value, plantSlugs: event.target.checked ? [...new Set([...value.plantSlugs, item.slug])] : value.plantSlugs.filter((slug) => slug !== item.slug) }))} /><span>{item.nameIt}</span></label>)}</div></fieldset>
                 </div>
                 <div className="admin-form-grid admin-form-grid--compact"><label><span>Messaggio WhatsApp opzionale</span><input value={product.whatsappMessage} onChange={(event) => setProduct({ ...product, whatsappMessage: event.target.value })} placeholder="Es. Ciao Barbara, vorrei saperne di più..." /></label></div>
                 <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "product" ? "Caricamento immagine..." : product.imageUrl ? "Sostituisci immagine prodotto" : "Carica immagine prodotto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "product"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><div className="admin-image-preview">{product.imageUrl ? <><img src={product.imageUrl} alt="Anteprima immagine prodotto" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine prodotto" onClick={() => setProduct({ ...product, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div></div>
@@ -496,6 +561,31 @@ export default function Admin() {
                 <div className="admin-products__heading"><div><span className="admin-eyebrow"><FolderTree size={13} /> Categorie del catalogo</span><h2>Organizza i rituali <small>({categories.length})</small></h2></div></div>
                 <div className="category-list">{categories.map((item, index) => <article className={!item.isActive ? "category-row is-inactive" : "category-row"} key={item.slug}><div className="category-row__number">{String(index + 1).padStart(2, "0")}</div><div className="category-row__name"><strong>{item.nameIt}</strong><span>{item.slug}</span></div><div className="category-row__translation"><span>{item.nameEn}</span><span>{item.nameEs}</span></div><span className={item.isActive ? "category-state is-active" : "category-state"}>{item.isActive ? "Attiva" : "Nascosta"}</span><div className="category-row__actions"><button className="admin-publish-toggle" type="button" onClick={() => void toggleCategory(item)}>{item.isActive ? "Nascondi" : "Attiva"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginCategoryEdit(item)}><Pencil size={15} /></button><button className="admin-delete" type="button" aria-label={`Elimina ${item.nameIt}`} onClick={() => void deleteCategory(item)}><Trash2 size={15} /></button></div></article>)}</div>
                 <p className="category-manager__hint"><Info size={14} /> Per eliminare una categoria, sposta prima i prodotti assegnati a un'altra categoria: così nessun prodotto resta senza collocazione.</p>
+              </section>
+            </>
+          )}
+
+          {section === "plants" && (
+            <>
+              <section className="admin-card admin-plant-card">
+                <div className="admin-card__top"><div><span className="admin-card__number">{editingPlant ? "MODIFICA MATERIA" : "NUOVA MATERIA"}</span><h2>{editingPlant ? "Aggiorna la scheda" : "Aggiungi una materia prima"}</h2></div><span className="admin-badge"><Sprout size={12} /> Guida botanica</span></div>
+                <div className="admin-plant-fields">
+                  <label>Nome in italiano<input value={plantForm.nameIt} onChange={(event) => setPlantForm({ ...plantForm, nameIt: event.target.value })} placeholder="Es. Calendula" /></label>
+                  <label>Name in English<input value={plantForm.nameEn} onChange={(event) => setPlantForm({ ...plantForm, nameEn: event.target.value })} placeholder="e.g. Calendula" /></label>
+                  <label>Nombre en español<input value={plantForm.nameEs} onChange={(event) => setPlantForm({ ...plantForm, nameEs: event.target.value })} placeholder="p. ej. Caléndula" /></label>
+                  <label>Nome botanico<input value={plantForm.botanicalName} onChange={(event) => setPlantForm({ ...plantForm, botanicalName: event.target.value })} placeholder="Calendula officinalis" /></label>
+                  <label>Descrizione · IT<textarea rows={4} value={plantForm.descriptionIt} onChange={(event) => setPlantForm({ ...plantForm, descriptionIt: event.target.value })} /></label>
+                  <label>Description · EN<textarea rows={4} value={plantForm.descriptionEn} onChange={(event) => setPlantForm({ ...plantForm, descriptionEn: event.target.value })} /></label>
+                  <label>Descripción · ES<textarea rows={4} value={plantForm.descriptionEs} onChange={(event) => setPlantForm({ ...plantForm, descriptionEs: event.target.value })} /></label>
+                  <label>Nota di cautela · IT<textarea rows={3} value={plantForm.safetyIt} onChange={(event) => setPlantForm({ ...plantForm, safetyIt: event.target.value })} /></label>
+                  <label>Safety note · EN<textarea rows={3} value={plantForm.safetyEn} onChange={(event) => setPlantForm({ ...plantForm, safetyEn: event.target.value })} /></label>
+                  <label>Precaución · ES<textarea rows={3} value={plantForm.safetyEs} onChange={(event) => setPlantForm({ ...plantForm, safetyEs: event.target.value })} /></label>
+                  <label className="admin-plant-source">Link della fonte (HTTPS)<input type="url" value={plantForm.sourceUrl} onChange={(event) => setPlantForm({ ...plantForm, sourceUrl: event.target.value })} placeholder="https://…" /></label>
+                </div>
+                <div className="admin-card__bottom"><p><Info size={14} /> Descrivi usi cosmetici; evita promesse mediche</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void savePlant()} disabled={busy}>{editingPlant ? <Save size={14} /> : <Plus size={14} />}{editingPlant ? "Salva materia" : "Aggiungi alla guida"}</button>{editingPlant ? <button className="admin-cancel" type="button" onClick={() => { setPlantForm(blankPlant); setEditingPlant(null); }}>Annulla</button> : null}</div></div>
+              </section>
+              <section className="admin-products admin-plant-list"><div className="admin-products__heading"><div><span className="admin-eyebrow"><Sprout size={13} /> Materie prime</span><h2>Guida botanica <small>({plantMaterials.length})</small></h2></div><a href="/plants" target="_blank" rel="noreferrer" className="text-link">Apri la guida <ExternalLink size={14} /></a></div>
+                {plantMaterials.length === 0 ? <div className="admin-empty">Nessuna materia prima. Aggiungi la prima scheda qui sopra.</div> : <div className="admin-products-list">{plantMaterials.map((item) => <div className="admin-product-row plant-admin-row" key={item.slug}><div className="admin-product-row__identity"><span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={17} /></span><div><strong>{item.nameIt}</strong><span>{item.botanicalName || item.slug} · {item.nameEn} · {item.nameEs}</span></div></div><span className={item.isActive ? "admin-published" : "admin-unpublished"}>{item.isActive ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isActive ? "Attiva" : "Nascosta"}</span><button className="admin-publish-toggle" type="button" onClick={() => void togglePlant(item)}>{item.isActive ? "Nascondi" : "Attiva"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginPlantEdit(item)}><Pencil size={15} /></button></div>)}</div>}
               </section>
             </>
           )}

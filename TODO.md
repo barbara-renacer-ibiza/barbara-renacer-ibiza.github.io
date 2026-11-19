@@ -25,7 +25,8 @@
 - [x] Apply an additive Supabase migration for nullable product INCI and botanical/material data with appropriate public-read policies; preserve all current production rows and media.
 - [x] Extend the existing `renacer-admin` Edge Function without weakening PIN/session checks, and keep the current admin product/category/article/settings flows working.
 - [x] Keep `client/public/manus-routes.json` synchronized with `/plants`.
-- [ ] Pass `pnpm check`, `pnpm test`, and `pnpm build:static`; verify the plant route, public data reads, admin persistence paths, static bundle, image response and deployed GitHub Pages site.
+- [x] For Plants, let the owner upload an image file rather than paste a URL; enter names, descriptions and cautions in Italian only and translate them automatically to English and Spanish on save.
+- [x] Pass `pnpm check`, `pnpm test` (6 tests), and `pnpm build:static`; verify `/plants` serves HTTP 200 directly, the 26-item public guide works, and a disposable admin entry saves uploaded imagery plus translated names, descriptions and cautions in English and Spanish; remove the test database row afterward.
 - [x] Push the completed intended change to `origin/main`, wait for the Pages workflow, and confirm the deployed site works before marking these requested outcomes complete.
 
 ## Payment confirmation

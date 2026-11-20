@@ -381,6 +381,24 @@ export default function Home() {
           </div>
         </section>
 
+        {(socialLinks.facebookUrl || socialLinks.instagramUrl) ? <section className="social-section container" aria-label="Social media">
+          <div className="social-section__intro">
+            <SectionEyebrow icon={<Heart size={14} />}>{language === "en" ? "Stay connected" : language === "es" ? "Sigamos conectados" : "Restiamo in contatto"}</SectionEyebrow>
+            <h2>{language === "en" ? "Follow the Renacer rhythm." : language === "es" ? "Sigue el ritmo de Renacer." : "Segui il ritmo di Renacer."}</h2>
+            <p>{language === "en" ? "Small rituals, new botanical ideas and life in Ibiza, shared from the project as it grows." : language === "es" ? "Pequeños rituales, nuevas ideas botánicas y vida en Ibiza, compartidos mientras crece el proyecto." : "Piccoli rituali, idee botaniche e vita a Ibiza, condivisi mentre il progetto cresce."}</p>
+          </div>
+          <div className="social-section__cards">
+            {socialLinks.instagramUrl ? <a className="social-card social-card--instagram" href={socialLinks.instagramUrl} target="_blank" rel="noopener noreferrer">
+              <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.6" cy="6.6" r=".8" /></svg></span>
+              <span><small>Instagram</small><strong>{language === "en" ? "See the latest" : language === "es" ? "Ver lo último" : "Scopri le novità"}</strong></span><ArrowUpRight size={17} />
+            </a> : null}
+            {socialLinks.facebookUrl ? <a className="social-card social-card--facebook" href={socialLinks.facebookUrl} target="_blank" rel="noopener noreferrer">
+              <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z" /></svg></span>
+              <span><small>Facebook</small><strong>{language === "en" ? "Join the community" : language === "es" ? "Únete a la comunidad" : "Entra nella community"}</strong></span><ArrowUpRight size={17} />
+            </a> : null}
+          </div>
+        </section> : null}
+
         <section className="contact-section" id="contatti">
           <div className="container contact-section__inner">
             <div className="contact-section__copy">

@@ -23,7 +23,7 @@ type Product = { id: number; slug: string; nameIt: string; nameEn: string | null
 type ProductMaterial = { productId: number; plantSlug: string };
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
-const supabaseKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnF2bnRobWZlYXR3ZnB5c3J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3Nzk3MTAsImV4cCI6MjExMDM1NTcxMH0.9HxrdAIQxWQ3PtWAuICpXfNjMfR4chgAmlY9cYyxB38";
 const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
 const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
 

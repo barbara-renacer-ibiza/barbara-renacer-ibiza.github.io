@@ -19,7 +19,7 @@ type Article = {
 };
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
-const supabasePublishableKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
+const supabasePublishableKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnF2bnRobWZlYXR3ZnB5c3J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3Nzk3MTAsImV4cCI6MjExMDM1NTcxMH0.9HxrdAIQxWQ3PtWAuICpXfNjMfR4chgAmlY9cYyxB38";
 const languageCopy: Record<Language, Record<string, string>> = {
   it: {
     home: "Home", catalog: "La collezione", eyebrow: "Journal Renacer", title: "Nutrizione & benessere", lead: "Appunti, pratiche e riflessioni per una cura che parte da dentro e si intreccia con la vita quotidiana.",

@@ -73,7 +73,7 @@ type ArtisanSubmission = { id: number; slug: string; artisanName: string; contac
 type AdminSection = "overview" | "products" | "categories" | "plants" | "articles" | "artisans" | "settings";
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
-const supabaseKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnF2bnRobWZlYXR3ZnB5c3J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3Nzk3MTAsImV4cCI6MjExMDM1NTcxMH0.9HxrdAIQxWQ3PtWAuICpXfNjMfR4chgAmlY9cYyxB38";
 const adminFunctionUrl = `${supabaseUrl}/functions/v1/renacer-admin`;
 const blankProduct: ProductForm = { name: "", description: "", price: "", categorySlug: "", imageUrl: "", whatsappMessage: "", INCI: "", plantSlugs: [] };
 const blankArticle: ArticleForm = { title: "", body: "", imageUrl: "" };

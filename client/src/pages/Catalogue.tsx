@@ -9,7 +9,7 @@ type Category = { slug: string; nameIt: string; nameEn: string | null; nameEs: s
 type Plant = { slug: string; nameIt: string; nameEn: string | null; nameEs: string | null };
 type Relation = { productId: number; plantSlug: string };
 const api = "https://dybqvnthmfeatwfpysrv.supabase.co";
-const key = "sb_publishable_tOmI-rgVzQ7FHs56g-JhQ_zrYgZQOd";
+const key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnF2bnRobWZlYXR3ZnB5c3J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3Nzk3MTAsImV4cCI6MjExMDM1NTcxMH0.9HxrdAIQxWQ3PtWAuICpXfNjMfR4chgAmlY9cYyxB38";
 const headers = { apikey: key, Authorization: `Bearer ${key}` };
 const words = {
   it: { kicker: "Renacer · Ibiza", title: "La collezione", lead: "Prodotti artigianali, creati con cura e ispirati dalla natura.", search: "Cerca un prodotto", all: "Tutte le categorie", ask: "Chiedi disponibilità", inci: "INCI · ingredienti", plants: "Materie prime collegate", back: "Tutti i prodotti", empty: "Nessun prodotto pubblicato al momento.", noMatch: "Nessun prodotto corrisponde alla ricerca.", loading: "Caricamento della collezione…", notFound: "Questo prodotto non è disponibile.", home: "Torna al sito", catalog: "Catalogo", nutrition: "Nutrizione", artisans: "Artigiani" },

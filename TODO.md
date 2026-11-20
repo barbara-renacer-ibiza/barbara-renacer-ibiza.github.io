@@ -21,6 +21,11 @@
 - [x] On each published product, show links to the materials explicitly assigned to it; on each material entry, show links to published products explicitly assigned to it. Keep unconfirmed product-material links unassigned until the owner verifies them.
 - [x] Do not make medical/treatment claims; retain source-supported safety cautions, including hypericum/UV exposure, potential allergens, and burns/wounds.
 
+## Homepage adjustments requested (2026-11-20)
+- [x] Temporarily hide the homepage section titled “Segui il ritmo di Renacer” in Italian (and its corresponding English and Spanish versions); keep its social configuration/data intact and make the section easy to restore.
+- [x] Place the homepage Nutrition section immediately after the product/collection section.
+- [x] Remove the three homepage value cards titled “Personale”, “Essenziale” and “In ascolto” (including their English and Spanish equivalents); do not alter other homepage content.
+
 ## Production integrity and delivery
 - [x] Apply an additive Supabase migration for nullable product INCI and botanical/material data with appropriate public-read policies; preserve all current production rows and media.
 - [x] Extend the existing `renacer-admin` Edge Function without weakening PIN/session checks, and keep the current admin product/category/article/settings flows working.

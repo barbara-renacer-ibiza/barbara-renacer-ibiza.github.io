@@ -5,7 +5,6 @@ import {
   BookOpen,
   Check,
   CircleDot,
-  Compass,
   Heart,
   Languages,
   Leaf,
@@ -165,6 +164,7 @@ function articleExcerpt(body: string, wordCount = 36) {
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const showSocialSection = false; // Re-enable when the owner is ready to restore this section.
   const [language, setLanguage] = useState<Language>("it");
   const [articles, setArticles] = useState<NutritionArticleView[]>([]);
   const [socialLinks, setSocialLinks] = useState<{ facebookUrl: string | null; instagramUrl: string | null }>({ facebookUrl: null, instagramUrl: null });
@@ -282,23 +282,25 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="social-section container" aria-label="Social media">
-          <div className="social-section__intro">
-            <SectionEyebrow icon={<Heart size={14} />}>{language === "en" ? "Stay connected" : language === "es" ? "Sigamos conectados" : "Restiamo in contatto"}</SectionEyebrow>
-            <h2>{language === "en" ? "Follow the Renacer rhythm." : language === "es" ? "Sigue el ritmo de Renacer." : "Segui il ritmo di Renacer."}</h2>
-            <p>{language === "en" ? "Small rituals, new botanical ideas and life in Ibiza, shared from the project as it grows." : language === "es" ? "Pequeños rituales, nuevas ideas botánicas y vida en Ibiza, compartidos mientras crece el proyecto." : "Piccoli rituali, idee botaniche e vita a Ibiza, condivisi mentre il progetto cresce."}</p>
-          </div>
-          <div className="social-section__cards">
-            <a className={socialLinks.instagramUrl ? "social-card social-card--instagram" : "social-card social-card--instagram is-disabled"} href={socialLinks.instagramUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.instagramUrl} onClick={(event) => { if (!socialLinks.instagramUrl) event.preventDefault(); }}>
-              <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.6" cy="6.6" r=".8" /></svg></span>
-              <span><small>Instagram</small><strong>{socialLinks.instagramUrl ? (language === "en" ? "See the latest" : language === "es" ? "Ver lo último" : "Scopri le novità") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
-            </a>
-            <a className={socialLinks.facebookUrl ? "social-card social-card--facebook" : "social-card social-card--facebook is-disabled"} href={socialLinks.facebookUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.facebookUrl} onClick={(event) => { if (!socialLinks.facebookUrl) event.preventDefault(); }}>
-              <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z" /></svg></span>
-              <span><small>Facebook</small><strong>{socialLinks.facebookUrl ? (language === "en" ? "Join the community" : language === "es" ? "Únete a la comunidad" : "Entra nella community") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
-            </a>
-          </div>
-        </section>
+        {showSocialSection && (
+          <section className="social-section container" aria-label="Social media">
+            <div className="social-section__intro">
+              <SectionEyebrow icon={<Heart size={14} />}>{language === "en" ? "Stay connected" : language === "es" ? "Sigamos conectados" : "Restiamo in contatto"}</SectionEyebrow>
+              <h2>{language === "en" ? "Follow the Renacer rhythm." : language === "es" ? "Sigue el ritmo de Renacer." : "Segui il ritmo di Renacer."}</h2>
+              <p>{language === "en" ? "Small rituals, new botanical ideas and life in Ibiza, shared from the project as it grows." : language === "es" ? "Pequeños rituales, nuevas ideas botánicas y vida en Ibiza, compartidos mientras crece el proyecto." : "Piccoli rituali, idee botaniche e vita a Ibiza, condivisi mentre il progetto cresce."}</p>
+            </div>
+            <div className="social-section__cards">
+              <a className={socialLinks.instagramUrl ? "social-card social-card--instagram" : "social-card social-card--instagram is-disabled"} href={socialLinks.instagramUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.instagramUrl} onClick={(event) => { if (!socialLinks.instagramUrl) event.preventDefault(); }}>
+                <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.6" cy="6.6" r=".8" /></svg></span>
+                <span><small>Instagram</small><strong>{socialLinks.instagramUrl ? (language === "en" ? "See the latest" : language === "es" ? "Ver lo último" : "Scopri le novità") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
+              </a>
+              <a className={socialLinks.facebookUrl ? "social-card social-card--facebook" : "social-card social-card--facebook is-disabled"} href={socialLinks.facebookUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.facebookUrl} onClick={(event) => { if (!socialLinks.facebookUrl) event.preventDefault(); }}>
+                <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z" /></svg></span>
+                <span><small>Facebook</small><strong>{socialLinks.facebookUrl ? (language === "en" ? "Join the community" : language === "es" ? "Únete a la comunidad" : "Entra nella community") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
+              </a>
+            </div>
+          </section>
+        )}
 
         <section className="catalog-section catalog-section--early" id="catalogo">
           <div className="container">
@@ -315,41 +317,6 @@ export default function Home() {
               <a className="button button--outline" href="/catalogue">{t("discover")} <ArrowUpRight size={17} /></a>
             </div>
             <div className="catalog-footnote"><ShieldCheck size={15} /> {language === "en" ? "Each product has its own shareable detail page." : language === "es" ? "Cada producto tiene su propia página para compartir." : "Ogni prodotto ha una pagina dedicata da condividere."}</div>
-          </div>
-        </section>
-
-        <section className="story-section container" id="progetto">
-          <div className="story-section__heading">
-            <SectionEyebrow icon={<Leaf size={14} />}>{t("projectEyebrow")}</SectionEyebrow>
-            <h2>{t("projectTitle")}</h2>
-          </div>
-          <div className="story-section__body">
-            <p className="story-section__lead">{t("storyLead")}</p>
-            <p>{t("storyBody")}</p>
-            <a className="arrow-link" href="/nutrition">{t("storyLink")} <ArrowUpRight size={16} /></a>
-          </div>
-        </section>
-
-        <section className="values-section">
-          <div className="container values-grid">
-            <article className="value-card value-card--warm">
-              <div className="value-card__icon"><Heart size={18} /></div>
-              <span>01</span>
-              <h3>{language === "en" ? "Personal" : language === "es" ? "Personal" : "Personale"}</h3>
-              <p>{language === "en" ? "A living project, close to people and to the person carrying it forward." : language === "es" ? "Un proyecto vivo, cercano a las personas y a quien lo lleva adelante." : "Un progetto in evoluzione, vicino alle persone e alla realtà di chi lo porta avanti."}</p>
-            </article>
-            <article className="value-card value-card--green">
-              <div className="value-card__icon"><Sprout size={18} /></div>
-              <span>02</span>
-              <h3>{language === "en" ? "Essential" : language === "es" ? "Esencial" : "Essenziale"}</h3>
-              <p>{language === "en" ? "Ingredients and words chosen with care, leaving room for simplicity." : language === "es" ? "Ingredientes y palabras elegidos con cuidado, dejando espacio a la sencillez." : "Ingredienti e parole scelti con cura, lasciando spazio alla semplicità."}</p>
-            </article>
-            <article className="value-card value-card--cream">
-              <div className="value-card__icon"><Compass size={18} /></div>
-              <span>03</span>
-              <h3>{language === "en" ? "Listening" : language === "es" ? "Escucha" : "In ascolto"}</h3>
-              <p>{language === "en" ? "A catalogue that grows with real work, never the other way around." : language === "es" ? "Un catálogo que crece con el trabajo real, y no al contrario." : "Un catalogo che crescerà nel tempo, seguendo il lavoro reale e non il contrario."}</p>
-            </article>
           </div>
         </section>
 
@@ -380,6 +347,18 @@ export default function Home() {
               <div><Check size={16} /> {t("futureThree")}</div>
             </div>}
             <a className="arrow-link nutrition-all-articles" href="/nutrition">{t("allArticles")} <ArrowUpRight size={15} /></a>
+          </div>
+        </section>
+
+        <section className="story-section container" id="progetto">
+          <div className="story-section__heading">
+            <SectionEyebrow icon={<Leaf size={14} />}>{t("projectEyebrow")}</SectionEyebrow>
+            <h2>{t("projectTitle")}</h2>
+          </div>
+          <div className="story-section__body">
+            <p className="story-section__lead">{t("storyLead")}</p>
+            <p>{t("storyBody")}</p>
+            <a className="arrow-link" href="/nutrition">{t("storyLink")} <ArrowUpRight size={16} /></a>
           </div>
         </section>
 

@@ -26,6 +26,8 @@ The source reference: `https://barbara-botanica-ibiza.foldedrice.chatgpt.site/in
 ## Follow-up requested changes (2026-11-20)
 The owner wants a shorter, more editorial landing page and a separate `/catalogue` page. Keep the homepage as a brand introduction with the existing hero, story, selected highlights and clear catalogue links; show only a small featured subset of products there. Move full search/filter/gallery browsing to `/catalogue`; reduce product-card image area, card scale and spacing consistently for desktop, tablet and mobile.
 
+For the latest homepage adjustments, temporarily hide “Segui il ritmo di Renacer” and its localized equivalents while preserving an easy code-level reactivation path and all social settings. Move the Nutrition section directly after the homepage collection/products section. Remove the “Personale”, “Essenziale” and “In ascolto” value cards and their English/Spanish equivalents.
+
 The Nutrition section at `/nutrition` currently reads only published articles. The live database contains five entries, all `isPublished = 0`, and their titles are test/draft records. Do not silently publish those drafts. Keep the Nutrition page connected to published articles and make its empty/publishing state clear; ensure the admin's publication control and the public section link are correct.
 
 Add an additive singleton site-settings record for Facebook and Instagram URLs. Let Barbara add/change each HTTPS social-page URL in the protected admin settings section; validate domain/URL shape and render the corresponding linked social icons in the homepage/footer. The owner supplies and can replace the exact Facebook page among her several pages.

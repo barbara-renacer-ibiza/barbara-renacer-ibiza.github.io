@@ -8,8 +8,8 @@ const origin = 'https://barbara-renacer-ibiza.github.io';
 const projectUrl = 'https://dybqvnthmfeatwfpysrv.supabase.co';
 
 const source = await fs.readFile(path.join(root, 'client/src/pages/Home.tsx'), 'utf8');
-const keyMatch = source.match(/const\s+supabasePublishableKey\s*=\s*["'](sb_publishable[^"']+)["']/);
-if (!keyMatch) throw new Error('Could not extract sb_publishable key from client/src/pages/Home.tsx');
+const keyMatch = source.match(/const\s+supabasePublishableKey\s*=\s*["']([^"']+)["']/);
+if (!keyMatch) throw new Error('Could not extract Supabase public key from client/src/pages/Home.tsx');
 const key = keyMatch[1];
 const headers = { apikey: key, Authorization: `Bearer ${key}` };
 

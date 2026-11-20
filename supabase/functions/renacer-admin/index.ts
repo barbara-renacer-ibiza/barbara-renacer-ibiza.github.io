@@ -523,6 +523,18 @@ Deno.serve(async (req: Request) => {
       return writeResult(result);
     }
 
+    if (action === "content_delete") {
+      const kind = String(body.kind || "");
+      const id = Number(body.id);
+      const table = kind === "article" ? "nutrition_articles" : kind === "product" ? "products" : "";
+      if (!table || !Number.isSafeInteger(id) || id < 1) return json({ error: "Contenuto non valido." }, 400);
+      if (kind === "product") {
+        const relations = await db(`product_plant_materials?productId=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+        if (!relations.ok) return json({ error: errorMessage(relations.data) }, relations.status);
+      }
+      return writeResult(await db(`${table}?id=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=representation" } }));
+    }
+
     if (action === "category_create") {
       const c = body.category || {};
       const nameIt = String(c.nameIt || "").trim();

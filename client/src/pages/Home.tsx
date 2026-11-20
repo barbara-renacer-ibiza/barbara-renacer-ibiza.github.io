@@ -166,28 +166,9 @@ function articleExcerpt(body: string, wordCount = 36) {
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [language, setLanguage] = useState<Language>("it");
-  const [products, setProducts] = useState<ProductView[]>([]);
-  const [catalogCategories, setCatalogCategories] = useState<CategoryView[]>([]);
-  const [plantMaterials, setPlantMaterials] = useState<PlantMaterialView[]>([]);
   const [articles, setArticles] = useState<NutritionArticleView[]>([]);
   const [socialLinks, setSocialLinks] = useState<{ facebookUrl: string | null; instagramUrl: string | null }>({ facebookUrl: null, instagramUrl: null });
   const t = (key: string) => extraCopy[language][key] ?? nutritionCopy[language][key] ?? copy[language][key] ?? copy.it[key] ?? key;
-
-  useEffect(() => {
-    const headers = { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` };
-    Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/products?select=id,slug,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,categorySlug,INCI,isPublished&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => response.ok ? response.json() : []),
-      fetch(`${supabaseUrl}/rest/v1/categories?select=slug,nameIt,nameEn,nameEs,isActive&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
-      fetch(`${supabaseUrl}/rest/v1/plant_materials?select=slug,nameIt,nameEn,nameEs&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
-      fetch(`${supabaseUrl}/rest/v1/product_plant_materials?select=productId,plantSlug&order=plantSlug.asc`, { headers }).then((response) => response.ok ? response.json() : []),
-    ]).then(([items, categoryRows, materialRows, materialLinks]: [ProductView[], CategoryView[], PlantMaterialView[], ProductPlantLink[]]) => {
-      const linksByProduct = new Map<number, string[]>();
-      materialLinks.forEach((link) => linksByProduct.set(link.productId, [...(linksByProduct.get(link.productId) || []), link.plantSlug]));
-      setProducts(items.map((item) => ({ ...item, plantSlugs: linksByProduct.get(item.id) || [] })));
-      setCatalogCategories(categoryRows);
-      setPlantMaterials(materialRows);
-    }).catch(() => { setProducts([]); setCatalogCategories([]); setPlantMaterials([]); });
-  }, []);
 
   useEffect(() => {
     fetch(`${supabaseUrl}/rest/v1/nutrition_articles?select=id,slug,titleIt,bodyIt,titleEn,bodyEn,titleEs,bodyEs,imageUrl&isPublished=eq.1&order=createdAt.desc`, { headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` } }).then((response) => response.ok ? response.json() : []).then((items: NutritionArticleView[]) => setArticles(items)).catch(() => setArticles([]));
@@ -213,10 +194,6 @@ export default function Home() {
 
   const closeMenu = () => setMenuOpen(false);
   const categoryLabel = (item: CategoryView) => language === "en" ? item.nameEn || item.nameIt : language === "es" ? item.nameEs || item.nameIt : item.nameIt;
-  const usedCategorySlugs = new Set(products.map((item) => item.categorySlug));
-  const categoryOptions = catalogCategories.filter((item) => usedCategorySlugs.has(item.slug));
-  const visibleProducts = products.slice(0, 3);
-
   return (
     <div className="site-shell">
       <div className="topline">
@@ -314,13 +291,12 @@ export default function Home() {
               </div>
               <p>{t("catalogBody")}</p>
             </div>
-            {visibleProducts.length > 0 ? <div className="product-grid product-grid--featured">{visibleProducts.map((item) => <ProductCard key={item.id} product={item} language={language} ctaLabel={t("askNow")} inciLabel={t("inci")} rawMaterialsLabel={t("rawMaterials")} plantMaterials={plantMaterials.filter((material) => item.plantSlugs?.includes(material.slug))} categoryLabel={categoryOptions.find((category) => category.slug === item.categorySlug) ? categoryLabel(categoryOptions.find((category) => category.slug === item.categorySlug)!) : item.category} />)}</div> : products.length > 0 ? <p className="catalog-no-results">{t("searchEmpty")}</p> : <div className="empty-catalog">
+            <div className="empty-catalog">
               <div className="empty-catalog__mark"><Leaf size={32} strokeWidth={1.1} /></div>
-              <div><span className="empty-catalog__eyebrow">{t("emptyEyebrow")}</span><h3>{t("emptyTitle")}</h3><p>{t("emptyBody")}</p></div>
-              <a className="button button--outline" href={whatsappLink} target="_blank" rel="noreferrer">{t("ask")} <ArrowUpRight size={17} /></a>
-            </div>}
-            {products.length > 3 ? <div className="catalog-featured-more"><a className="button button--outline" href="/catalogue">{language === "en" ? "Explore the full catalogue" : language === "es" ? "Explora el catálogo completo" : "Esplora tutto il catalogo"} <ArrowUpRight size={15}/></a></div> : null}
-            <div className="catalog-footnote"><ShieldCheck size={15} /> {products.length > 0 ? (language === "en" ? "Ask on WhatsApp about details and availability." : language === "es" ? "Pregunta por WhatsApp sobre detalles y disponibilidad." : "Chiedi su WhatsApp informazioni e disponibilità.") : (language === "en" ? "Products will appear here when Barbara adds them." : language === "es" ? "Los productos aparecerán aquí cuando Barbara los añada." : "I prodotti appariranno qui quando Barbara li aggiungerà.")}</div>
+              <div><span className="empty-catalog__eyebrow">{language === "en" ? "The collection" : language === "es" ? "La colección" : "La collezione"}</span><h3>{language === "en" ? "Explore the products." : language === "es" ? "Explora los productos." : "Scopri i prodotti."}</h3><p>{t("catalogBody")}</p></div>
+              <a className="button button--outline" href="/catalogue">{t("discover")} <ArrowUpRight size={17} /></a>
+            </div>
+            <div className="catalog-footnote"><ShieldCheck size={15} /> {language === "en" ? "Each product has its own shareable detail page." : language === "es" ? "Cada producto tiene su propia página para compartir." : "Ogni prodotto ha una pagina dedicata da condividere."}</div>
           </div>
         </section>
 

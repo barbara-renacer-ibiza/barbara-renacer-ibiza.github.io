@@ -26,6 +26,12 @@
 - [x] Place the homepage Nutrition section immediately after the product/collection section.
 - [x] Remove the three homepage value cards titled “Personale”, “Essenziale” and “In ascolto” (including their English and Spanish equivalents); do not alter other homepage content.
 
+## Homepage imagery and Plants emblem requested (2026-11-20)
+- [x] Add a distinct, polished lifestyle photograph relevant to food, botanicals and the “Care is also connected to what we eat” homepage Nutrition section; match the warm editorial feel of the existing hero photograph.
+- [x] Add a separate, polished seasonal-gifting / handmade botanical skincare photograph for the “Small rituals, as an offering” section; match the same visual identity without inventing product labels or text.
+- [x] Show the same botanical Renacer emblem used in the Nutrition page hero in the Plants page hero, so the brand mark is present there as requested; preserve the existing header/logo and page content.
+- [x] Keep both images as separate responsive website assets and preserve all Supabase records and existing production content.
+
 ## Production integrity and delivery
 - [x] Apply an additive Supabase migration for nullable product INCI and botanical/material data with appropriate public-read policies; preserve all current production rows and media.
 - [x] Extend the existing `renacer-admin` Edge Function without weakening PIN/session checks, and keep the current admin product/category/article/settings flows working.

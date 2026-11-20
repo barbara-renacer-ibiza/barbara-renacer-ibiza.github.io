@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpRight, ExternalLink, Leaf, Languages, Search, Sprout } from "lucide-react";
 import { useRoute } from "wouter";
 import ShareBar from "@/components/ShareBar";
+import RenacerEmblem from "@/components/RenacerEmblem";
 
 type Language = "it" | "en" | "es";
 type PlantMaterial = {
@@ -158,7 +159,7 @@ export default function Plants() {
             <h1>{t("title")}<br /><em>{t("accent")}</em></h1>
             <p>{t("intro")}</p>
           </div>
-          <div className="plants-hero__seal" aria-hidden="true"><span className="plants-hero__orbit plants-hero__orbit--one" /><span className="plants-hero__orbit plants-hero__orbit--two" /><span className="plants-hero__seal-icon"><Sprout size={39} strokeWidth={1.15} /></span><span className="plants-hero__seal-label">Renacer · Ibiza</span></div>
+          <RenacerEmblem className="nutrition-hero__mark plants-hero__brand-mark" />
         </section>
 
         <section className="plants-catalog container" aria-label={t("plants")}>

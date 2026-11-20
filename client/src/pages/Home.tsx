@@ -322,11 +322,7 @@ export default function Home() {
 
         <section className="nutrition-section container" id="nutrizione">
           <div className="nutrition-section__visual">
-            <div className="nutrition-orbit nutrition-orbit--one" />
-            <div className="nutrition-orbit nutrition-orbit--two" />
-            <div className="nutrition-symbol"><Leaf size={34} strokeWidth={1.25} /></div>
-            <span className="nutrition-note nutrition-note--one">alimentazione naturale</span>
-            <span className="nutrition-note nutrition-note--two">cura dentro e fuori</span>
+            <img className="nutrition-section__image" src={assetUrl("/images/nutrition-table.webp")} alt={language === "en" ? "Mediterranean figs, citrus, almonds and olive oil on an Ibiza stone table" : language === "es" ? "Higos, cítricos, almendras y aceite de oliva mediterráneos sobre una mesa de piedra en Ibiza" : "Fichi, agrumi, mandorle e olio d'oliva mediterranei su un tavolo in pietra a Ibiza"} loading="lazy" />
           </div>
           <div className="nutrition-section__copy">
             <SectionEyebrow icon={<BookOpen size={14} />}>{t("nutritionEyebrow")}</SectionEyebrow>
@@ -369,12 +365,8 @@ export default function Home() {
             <p>{language === "en" ? "A space ready for seasonal bundles, gift ideas and special offers when the time is right." : language === "es" ? "Un espacio preparado para paquetes de temporada, ideas de regalo y propuestas especiales cuando llegue el momento." : "Uno spazio pronto per accogliere pacchetti stagionali, idee regalo e proposte speciali quando sarà il momento."}</p>
             <div className="offers-tag"><CircleDot size={13} /> {language === "en" ? "no active offers" : language === "es" ? "ninguna oferta activa" : "nessuna offerta attiva"}</div>
           </div>
-          <div className="offers-section__shape" aria-hidden="true">
-            <div className="offers-sun" />
-            <div className="offers-leaf offers-leaf--one" />
-            <div className="offers-leaf offers-leaf--two" />
-            <div className="offers-stem" />
-            <span>spazio futuro<br />per le collezioni</span>
+          <div className="offers-section__shape">
+            <img className="offers-section__image" src={assetUrl("/images/seasonal-gifts.webp")} alt={language === "en" ? "A seasonal botanical skincare gift set arranged on sunlit Ibiza stone" : language === "es" ? "Un conjunto de regalo de cosmética botánica de temporada sobre piedra iluminada en Ibiza" : "Un regalo stagionale di cosmetici botanici su pietra soleggiata a Ibiza"} loading="lazy" />
           </div>
         </section>
 

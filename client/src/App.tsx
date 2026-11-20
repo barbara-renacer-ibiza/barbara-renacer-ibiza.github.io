@@ -8,6 +8,8 @@ import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import Nutrition from "./pages/Nutrition";
 import Plants from "./pages/Plants";
+import Catalogue from "./pages/Catalogue";
+import Artisans from "./pages/Artisans";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -17,6 +19,11 @@ function Router() {
         <Route path={"/"} component={Home} />
         <Route path={"/nutrition/:slug"} component={Nutrition} />
         <Route path={"/nutrition"} component={Nutrition} />
+        <Route path={"/catalogue/:slug"} component={Catalogue} />
+        <Route path={"/catalogue"} component={Catalogue} />
+        <Route path={"/artisans/:slug"} component={Artisans} />
+        <Route path={"/artisans"} component={Artisans} />
+        <Route path={"/plants/:slug"} component={Plants} />
         <Route path={"/plants"} component={Plants} />
         <Route path={"/admin"} component={Admin} />
         <Route path={"/admin/:section"} component={Admin} />

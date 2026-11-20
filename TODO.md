@@ -29,5 +29,21 @@
 - [x] Pass `pnpm check`, `pnpm test` (6 tests), and `pnpm build:static`; verify `/plants` serves HTTP 200 directly, the 26-item public guide works, and a disposable admin entry saves uploaded imagery plus translated names, descriptions and cautions in English and Spanish; remove the test database row afterward.
 - [x] Push the completed intended change to `origin/main`, wait for the Pages workflow, and confirm the deployed site works before marking these requested outcomes complete.
 
+## Barbara follow-up notes (2026-11-20)
+- [x] Shorten the homepage into a brand landing page with an introduction, photos, selected sections and clear links to a separate Catalogue; do not show the complete product set on Home. Reduce card/image footprint, show more products per row and per page, and keep spacing and layout comfortable and consistent on desktop and mobile.
+- [x] Repair the Nutrition section route and show only published nutrition articles there; keep all five existing unpublished/test articles as drafts pending Barbara’s approval. No draft was published or otherwise altered.
+- [x] Add editable Facebook and Instagram page URLs in the protected admin dashboard; Barbara can select and change her exact Facebook page, and configured icons/links appear publicly. The settings remain blank until she chooses the official profiles.
+- [x] Add the separate public Artisans section and a validated submission form for product photos, descriptions, prices and contact details; new requests are Pending and not publicly readable before approval.
+- [x] Add protected Artisan Submissions moderation: edit details, persist correction notes consistently, approve/reject, and permanently remove a request and its associated private/public images. Decisions remain with Barbara; disposable workflow tests were deleted after verification.
+- [x] Add stable per-item routes and share controls for published Catalogue products, Nutrition articles and plants, including WhatsApp/Facebook sharing and copy-link; prerender unique canonical/Open Graph metadata where static hosting supports it.
+- [x] Preserve production content and identity: existing 18 products, 16 categories, 5 draft articles, 26 plant materials and 62 product-material links remained unchanged; no duplicate or non-test product data was added. Responsive styles and navigation were built for desktop/mobile.
+
+## Follow-up production verification (2026-11-20)
+- [x] Apply the additive `site_settings_and_artisan_submissions` migration and the additive rate-limit identity primary key; verify the submissions bucket is private, contact/moderation columns are excluded from public grants, and only approved submissions are publicly selectable.
+- [x] Deploy `renacer-admin` to `dybqvnthmfeatwfpysrv` with `verify_jwt=false`; the function permits public access only to the validated/rate-limited submission path and retains PIN-session checks for dashboard actions. The existing `ADMIN_PIN` secret was not changed.
+- [x] Test live admin login/list (18 products, 5 draft articles, 0 submissions), verify invalid-session writes return 401, then submit synthetic requests through Pending → correction → approval and Pending → rejection; confirm public visibility rules and image availability; delete both test records and private/public images and remove exactly the three test quota entries.
+- [x] Pass `pnpm check`, `pnpm test` (6 tests), `pnpm build:static`, `node --check scripts/prerender-public-routes.mjs`, and `git diff --check`; prerender 46 published routes with metadata. Vite reports only the existing non-module script notice and a large-chunk advisory.
+- [ ] Push the completed changes to `origin/main`, wait for GitHub Pages deployment, then verify live URLs and social-preview metadata.
+
 ## Payment confirmation
 - [ ] Do not state that the bank transfer succeeded: no bank record or payment evidence is available in this session. Ask the client to confirm through their bank if confirmation is required.

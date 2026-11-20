@@ -35,11 +35,9 @@ jobs:
         run: pnpm build:static
         env:
           GITHUB_PAGES: "true"
-      - name: Support SPA routes
-        run: cp dist/public/index.html dist/public/404.html
-      - name: Pre-render Plants route
-        run: mkdir -p dist/public/plants && cp dist/public/index.html dist/public/plants/index.html
-      - name: Add SPA route fallback
+      - name: Pre-render public routes
+        run: node scripts/prerender-public-routes.mjs
+      - name: Add Pages route fallback
         run: cp dist/public/index.html dist/public/404.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

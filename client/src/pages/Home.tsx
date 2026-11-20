@@ -82,6 +82,7 @@ function SectionEyebrow({ children, icon }: { children: string; icon?: ReactNode
 
 type ProductView = {
   id: number;
+  slug: string;
   sourceLanguage: Language;
   nameIt: string;
   descriptionIt: string;
@@ -141,7 +142,7 @@ function ProductCard({ product, language, ctaLabel, categoryLabel, plantMaterial
       <div className="product-card__image-wrap">
         {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
       </div>
-      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3>{localized.name}</h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small>
+      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3><a href={`/catalogue/${encodeURIComponent(product.slug)}`}>{localized.name}</a></h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small>
         {product.INCI?.trim() ? <details className="product-card__inci"><summary>{inciLabel}</summary><p>{product.INCI}</p></details> : null}
         {plantMaterials.length ? <div className="product-card__materials"><span>{rawMaterialsLabel}</span><div>{plantMaterials.map((material) => <a key={material.slug} href={`/plants?plant=${encodeURIComponent(material.slug)}`}>{language === "en" ? material.nameEn || material.nameIt : language === "es" ? material.nameEs || material.nameIt : material.nameIt}</a>)}</div></div> : null}
         <a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
@@ -169,14 +170,13 @@ export default function Home() {
   const [catalogCategories, setCatalogCategories] = useState<CategoryView[]>([]);
   const [plantMaterials, setPlantMaterials] = useState<PlantMaterialView[]>([]);
   const [articles, setArticles] = useState<NutritionArticleView[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [socialLinks, setSocialLinks] = useState<{ facebookUrl: string | null; instagramUrl: string | null }>({ facebookUrl: null, instagramUrl: null });
   const t = (key: string) => extraCopy[language][key] ?? nutritionCopy[language][key] ?? copy[language][key] ?? copy.it[key] ?? key;
 
   useEffect(() => {
     const headers = { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` };
     Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/products?select=id,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,categorySlug,INCI,isPublished&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => response.ok ? response.json() : []),
+      fetch(`${supabaseUrl}/rest/v1/products?select=id,slug,sourceLanguage,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,imageUrl,whatsappMessage,priceCents,category,categorySlug,INCI,isPublished&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => response.ok ? response.json() : []),
       fetch(`${supabaseUrl}/rest/v1/categories?select=slug,nameIt,nameEn,nameEs,isActive&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
       fetch(`${supabaseUrl}/rest/v1/plant_materials?select=slug,nameIt,nameEn,nameEs&isActive=eq.true&order=nameIt.asc`, { headers }).then((response) => response.ok ? response.json() : []),
       fetch(`${supabaseUrl}/rest/v1/product_plant_materials?select=productId,plantSlug&order=plantSlug.asc`, { headers }).then((response) => response.ok ? response.json() : []),
@@ -194,6 +194,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    fetch(`${supabaseUrl}/rest/v1/site_settings?select=facebookUrl,instagramUrl&id=eq.1&limit=1`, { headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${supabasePublishableKey}` } })
+      .then((response) => response.ok ? response.json() : [])
+      .then((rows: { facebookUrl: string | null; instagramUrl: string | null }[]) => { if (rows[0]) setSocialLinks(rows[0]); })
+      .catch(() => setSocialLinks({ facebookUrl: null, instagramUrl: null }));
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const stored = localStorage.getItem("renacer_language");
     if (stored === "it" || stored === "en" || stored === "es") { setLanguage(stored); return () => { cancelled = true; }; }
@@ -208,10 +215,7 @@ export default function Home() {
   const categoryLabel = (item: CategoryView) => language === "en" ? item.nameEn || item.nameIt : language === "es" ? item.nameEs || item.nameIt : item.nameIt;
   const usedCategorySlugs = new Set(products.map((item) => item.categorySlug));
   const categoryOptions = catalogCategories.filter((item) => usedCategorySlugs.has(item.slug));
-  const visibleProducts = products.filter((item) => {
-    const searchable = `${item.nameIt} ${item.descriptionIt} ${item.nameEn || ""} ${item.nameEs || ""}`.toLowerCase();
-    return (!search.trim() || searchable.includes(search.toLowerCase())) && (selectedCategory === "all" || item.categorySlug === selectedCategory);
-  });
+  const visibleProducts = products.slice(0, 3);
 
   return (
     <div className="site-shell">
@@ -247,7 +251,8 @@ export default function Home() {
               { label: t("project"), href: "#progetto" },
               { label: t("nutrition"), href: "/nutrition" },
               { label: t("plants"), href: "/plants" },
-              { label: t("catalog"), href: "#catalogo" },
+              { label: t("catalog"), href: "/catalogue" },
+              { label: language === "en" ? "Artisans" : language === "es" ? "Artesanos" : "Artigiani", href: "/artisans" },
               { label: t("contact"), href: "#contatti" },
             ].map((item) => (
               <a key={item.href} href={item.href} onClick={closeMenu}>{item.label}</a>
@@ -274,7 +279,7 @@ export default function Home() {
               {t("heroLead")}
             </p>
             <div className="hero__actions">
-              <a className="button button--primary" href="#catalogo">
+              <a className="button button--primary" href="/catalogue">
                 {t("discover")} <ArrowDown size={17} />
               </a>
               <a className="text-link" href={whatsappLink} target="_blank" rel="noreferrer">
@@ -282,7 +287,7 @@ export default function Home() {
               </a>
             </div>
             <div className="hero__signature">
-              <span>Ibiza</span><span className="signature-dot" /><span>{language === "en" ? "personal production" : language === "es" ? "producción personal" : "produzione personale"}</span><span className="signature-dot" /><span>{language === "en" ? "catalogue in preparation" : language === "es" ? "catálogo en preparación" : "catalogo in preparazione"}</span>
+              <span>Ibiza</span><span className="signature-dot" /><span>{language === "en" ? "personal production" : language === "es" ? "producción personal" : "produzione personale"}</span><span className="signature-dot" /><span>{language === "en" ? "catalogue online" : language === "es" ? "catálogo disponible" : "catalogo online"}</span>
             </div>
           </div>
           <div className="hero__visual">
@@ -309,18 +314,12 @@ export default function Home() {
               </div>
               <p>{t("catalogBody")}</p>
             </div>
-            <div className="catalog-filters">
-              <label className="catalog-search"><span className="sr-only">{language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"}</span><input aria-label={language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"} placeholder={language === "en" ? "Search products" : language === "es" ? "Buscar productos" : "Cerca prodotti"} value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-              <div className="category-filters" aria-label={t("allCategories")}>
-                <button type="button" className={selectedCategory === "all" ? "is-active" : ""} onClick={() => setSelectedCategory("all")}>{t("allCategories")}</button>
-                {categoryOptions.map((category) => <button key={category.slug} type="button" className={selectedCategory === category.slug ? "is-active" : ""} onClick={() => setSelectedCategory(category.slug)}>{categoryLabel(category)}</button>)}
-              </div>
-            </div>
-            {visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((item) => <ProductCard key={item.id} product={item} language={language} ctaLabel={t("askNow")} inciLabel={t("inci")} rawMaterialsLabel={t("rawMaterials")} plantMaterials={plantMaterials.filter((material) => item.plantSlugs?.includes(material.slug))} categoryLabel={categoryOptions.find((category) => category.slug === item.categorySlug) ? categoryLabel(categoryOptions.find((category) => category.slug === item.categorySlug)!) : item.category} />)}</div> : products.length > 0 ? <p className="catalog-no-results">{t("searchEmpty")}</p> : <div className="empty-catalog">
+            {visibleProducts.length > 0 ? <div className="product-grid product-grid--featured">{visibleProducts.map((item) => <ProductCard key={item.id} product={item} language={language} ctaLabel={t("askNow")} inciLabel={t("inci")} rawMaterialsLabel={t("rawMaterials")} plantMaterials={plantMaterials.filter((material) => item.plantSlugs?.includes(material.slug))} categoryLabel={categoryOptions.find((category) => category.slug === item.categorySlug) ? categoryLabel(categoryOptions.find((category) => category.slug === item.categorySlug)!) : item.category} />)}</div> : products.length > 0 ? <p className="catalog-no-results">{t("searchEmpty")}</p> : <div className="empty-catalog">
               <div className="empty-catalog__mark"><Leaf size={32} strokeWidth={1.1} /></div>
               <div><span className="empty-catalog__eyebrow">{t("emptyEyebrow")}</span><h3>{t("emptyTitle")}</h3><p>{t("emptyBody")}</p></div>
               <a className="button button--outline" href={whatsappLink} target="_blank" rel="noreferrer">{t("ask")} <ArrowUpRight size={17} /></a>
             </div>}
+            {products.length > 3 ? <div className="catalog-featured-more"><a className="button button--outline" href="/catalogue">{language === "en" ? "Explore the full catalogue" : language === "es" ? "Explora el catálogo completo" : "Esplora tutto il catalogo"} <ArrowUpRight size={15}/></a></div> : null}
             <div className="catalog-footnote"><ShieldCheck size={15} /> {products.length > 0 ? (language === "en" ? "Ask on WhatsApp about details and availability." : language === "es" ? "Pregunta por WhatsApp sobre detalles y disponibilidad." : "Chiedi su WhatsApp informazioni e disponibilità.") : (language === "en" ? "Products will appear here when Barbara adds them." : language === "es" ? "Los productos aparecerán aquí cuando Barbara los añada." : "I prodotti appariranno qui quando Barbara li aggiungerà.")}</div>
           </div>
         </section>
@@ -448,13 +447,15 @@ export default function Home() {
             <a href="#progetto">{t("project")}</a>
             <a href="/nutrition">{t("nutrition")}</a>
             <a href="/plants">{t("plants")}</a>
-            <a href="#catalogo">{t("catalog")}</a>
+            <a href="/catalogue">{t("catalog")}</a>
+            <a href="/artisans">{language === "en" ? "Artisans" : language === "es" ? "Artesanos" : "Artigiani"}</a>
             <a href="#contatti">{t("contact")}</a>
           </div>
           <div className="footer__details">
             <span><MapPin size={14} /> Ibiza, Spagna</span>
             <a href={whatsappLink} target="_blank" rel="noreferrer"><Mail size={14} /> WhatsApp</a>
           </div>
+          {(socialLinks.facebookUrl || socialLinks.instagramUrl) ? <div className="footer-social" aria-label="Social media">{socialLinks.facebookUrl ? <a href={socialLinks.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z"/></svg></a> : null}{socialLinks.instagramUrl ? <a href={socialLinks.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.6" cy="6.6" r=".8"/></svg></a> : null}</div> : null}
         </div>
         <div className="container footer__bottom">
           <span>© {new Date().getFullYear()} Renacer · Ibiza</span>

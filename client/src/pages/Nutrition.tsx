@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Languages, Leaf } from "lucide-react";
+import ShareBar from "@/components/ShareBar";
 
 type Language = "it" | "en" | "es";
 type Article = {
@@ -101,7 +102,7 @@ export default function Nutrition() {
             <span className="brand__text"><strong>Renacer</strong><small>Ibiza · cura artigianale</small></span>
           </a>
           <nav className="nutrition-nav" aria-label="Navigation">
-            <a href="/">{text.home}</a><a href="/#catalogo">{text.catalog}</a>
+            <a href="/">{text.home}</a><a href="/catalogue">{text.catalog}</a>
             <div className="nutrition-language" aria-label="Language">
               <Languages size={14} />
               {(["it", "en", "es"] as const).map((option) => (
@@ -154,7 +155,7 @@ export default function Nutrition() {
           <article className="nutrition-detail">
             <a className="journal-card__link nutrition-detail__back" href="/nutrition"><ArrowLeft size={15} /> {text.back}</a>
             {article.imageUrl ? <div className="nutrition-detail__image"><img src={article.imageUrl} alt={titleFor(article, language)} /></div> : null}
-            <div className="nutrition-detail__content"><span className="section-eyebrow"><BookOpen size={14} /> {text.eyebrow}</span><h1>{titleFor(article, language)}</h1><div className="nutrition-detail__body">{paragraphs(bodyFor(article, language)).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><p className="nutrition-disclaimer">{text.notice}</p></div>
+            <div className="nutrition-detail__content"><span className="section-eyebrow"><BookOpen size={14} /> {text.eyebrow}</span><h1>{titleFor(article, language)}</h1><div className="nutrition-detail__body">{paragraphs(bodyFor(article, language)).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><ShareBar title={titleFor(article, language)} path={`/nutrition/${encodeURIComponent(article.slug)}`} language={language}/><p className="nutrition-disclaimer">{text.notice}</p></div>
           </article>
         )}
       </main>

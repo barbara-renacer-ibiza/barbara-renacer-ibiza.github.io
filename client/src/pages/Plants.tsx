@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpRight, ExternalLink, Leaf, Languages, Search, Sprout } from "lucide-react";
+import { useRoute } from "wouter";
+import ShareBar from "@/components/ShareBar";
 
 type Language = "it" | "en" | "es";
 type PlantMaterial = {
@@ -58,6 +60,8 @@ function productName(product: Product, language: Language) {
 }
 
 export default function Plants() {
+  const [detailMatch, routeParams] = useRoute("/plants/:slug");
+  const routeSlug = detailMatch ? routeParams?.slug : undefined;
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem("renacer_language");
     return saved === "en" || saved === "es" ? saved : "it";
@@ -68,7 +72,7 @@ export default function Plants() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const selectedSlug = new URLSearchParams(window.location.search).get("plant");
+  const selectedSlug = routeSlug || new URLSearchParams(window.location.search).get("plant");
   const t = (key: string) => copy[language][key] ?? copy.it[key] ?? key;
 
   useEffect(() => {
@@ -109,9 +113,19 @@ export default function Plants() {
 
   const visibleMaterials = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase(language);
-    if (!needle) return materials;
-    return materials.filter((material) => [material.nameIt, material.nameEn, material.nameEs, material.botanicalName || "", material.descriptionIt, material.descriptionEn, material.descriptionEs].join(" ").toLocaleLowerCase(language).includes(needle));
-  }, [materials, search, language]);
+    const result = !needle ? materials : materials.filter((material) => [material.nameIt, material.nameEn, material.nameEs, material.botanicalName || "", material.descriptionIt, material.descriptionEn, material.descriptionEs].join(" ").toLocaleLowerCase(language).includes(needle));
+    return routeSlug ? result.filter((material) => material.slug === routeSlug) : result;
+  }, [materials, search, language, routeSlug]);
+
+  useEffect(() => {
+    const selected = materials.find((material) => material.slug === selectedSlug);
+    if (!selected) return;
+    const title = materialName(selected, language);
+    document.title = `${title} · Renacer Ibiza`;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) { meta = document.createElement("meta"); meta.setAttribute("name", "description"); document.head.append(meta); }
+    meta.setAttribute("content", materialDescription(selected, language).slice(0, 155));
+  }, [materials, selectedSlug, language]);
 
   const chooseLanguage = (next: Language) => {
     localStorage.setItem("renacer_language", next);
@@ -128,7 +142,7 @@ export default function Plants() {
             <span className="brand__text"><strong>Renacer</strong><small>Ibiza · artisan care</small></span>
           </a>
           <nav className="plants-nav" aria-label={t("plants")}>
-            <a href="/#catalogo">{t("collection")}</a><a href="/nutrition">{t("nutrition")}</a><a className="is-active" href="/plants">{t("plants")}</a>
+            <a href="/catalogue">{t("collection")}</a><a href="/nutrition">{t("nutrition")}</a><a className="is-active" href="/plants">{t("plants")}</a>
             <span className="plants-language" aria-label="Language"><Languages size={14} />
               {(["it", "en", "es"] as Language[]).map((option) => <button key={option} type="button" className={language === option ? "is-active" : ""} onClick={() => chooseLanguage(option)}>{option.toUpperCase()}</button>)}
             </span>
@@ -159,14 +173,15 @@ export default function Plants() {
                 return <article className={selectedSlug === material.slug ? "plant-card is-highlighted" : "plant-card"} id={`material-${material.slug}`} key={material.slug}>
                   {material.imageUrl ? <img className="plant-card__image" src={material.imageUrl} alt={materialName(material, language)} loading="lazy" /> : null}
                   <div className="plant-card__top"><span>{String(index + 1).padStart(2, "0")}</span><Leaf size={17} /></div>
-                  <h3>{materialName(material, language)}</h3>
+                  <h3><a href={`/plants/${encodeURIComponent(material.slug)}`}>{materialName(material, language)}</a></h3>
                   {material.botanicalName ? <p className="plant-card__botanical"><i>{material.botanicalName}</i></p> : null}
                   <p className="plant-card__description">{materialDescription(material, language)}</p>
                   {safety ? <p className="plant-card__safety">{safety}</p> : null}
                   {material.sourceUrl ? <a className="plant-card__source" href={material.sourceUrl} target="_blank" rel="noopener noreferrer">{t("source")} <ExternalLink size={13} /></a> : null}
                   <div className="plant-card__products"><strong>{t("products")}</strong>
-                    {related.length ? <div>{related.map((product) => <a key={product.id} href={`/#product-${product.id}`}>{productName(product, language)} <ArrowUpRight size={12} /></a>)}</div> : <small>{t("noProducts")}</small>}
+                    {related.length ? <div>{related.map((product) => <a key={product.id} href={`/catalogue/${encodeURIComponent(product.slug)}`}>{productName(product, language)} <ArrowUpRight size={12} /></a>)}</div> : <small>{t("noProducts")}</small>}
                   </div>
+                  <ShareBar title={materialName(material, language)} path={`/plants/${encodeURIComponent(material.slug)}`} language={language}/>
                 </article>;
               })}
             </div>
@@ -178,7 +193,7 @@ export default function Plants() {
 
       <footer className="site-footer plants-footer"><div className="container footer__top">
         <a className="brand brand--footer" href="/"><img className="brand-logo-image" src={assetUrl("/images/logo-woman.png")} alt="" /><span className="brand__text"><strong>Renacer</strong><small>Ibiza · artisan care</small></span></a>
-        <div className="footer__links"><a href="/#catalogo">{t("collection")}</a><a href="/nutrition">{t("nutrition")}</a><a href="/plants">{t("plants")}</a></div>
+        <div className="footer__links"><a href="/catalogue">{t("collection")}</a><a href="/nutrition">{t("nutrition")}</a><a href="/plants">{t("plants")}</a></div>
         <div className="footer__details"><span>{t("footer")}</span><a href="/admin">Gestione catalogo</a></div>
       </div><div className="container footer__bottom"><a href="/#catalogo">{t("back")}</a><span>© {new Date().getFullYear()} Renacer · Ibiza</span></div></footer>
     </div>

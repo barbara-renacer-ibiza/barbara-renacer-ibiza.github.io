@@ -9,6 +9,7 @@ import {
   FileText,
   FolderTree,
   Image as ImageIcon,
+  HandHeart,
   Info,
   KeyRound,
   Leaf,
@@ -68,7 +69,8 @@ type ProductForm = { name: string; description: string; price: string; categoryS
 type ProductTranslations = { en: { name: string; description: string }; es: { name: string; description: string } };
 type ArticleForm = { title: string; body: string; imageUrl: string };
 type CategoryForm = { nameIt: string; nameEn: string; nameEs: string; isActive: boolean };
-type AdminSection = "overview" | "products" | "categories" | "plants" | "articles" | "settings";
+type ArtisanSubmission = { id: number; slug: string; artisanName: string; contactEmail: string; contactPhone: string | null; productName: string; description: string; category: string; priceCents: number; currency: string; status: "pending" | "changes_requested" | "approved" | "rejected"; correctionNote: string | null; moderationNote: string | null; signedImageUrl: string | null; imageUrl: string | null; createdAt: string };
+type AdminSection = "overview" | "products" | "categories" | "plants" | "articles" | "artisans" | "settings";
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
 const supabaseKey = "sb_publishable_tOmI-rgVzQ7FHs56gJ-JhQ_zrYgZQOd";
@@ -134,13 +136,14 @@ const navItems: { id: AdminSection; label: string; icon: typeof Package; descrip
   { id: "categories", label: "Categorie", icon: FolderTree, description: "Organizza i rituali" },
   { id: "plants", label: "Piante e materie", icon: Sprout, description: "Ingredienti e collegamenti" },
   { id: "articles", label: "Articoli", icon: BookOpen, description: "Journal Nutrition" },
-  { id: "settings", label: "PIN e sicurezza", icon: Settings2, description: "Accesso personale" },
+  { id: "artisans", label: "Artisan Submissions", icon: HandHeart, description: "Richieste e revisione" },
+  { id: "settings", label: "Impostazioni", icon: Settings2, description: "Social e sicurezza" },
 ];
 
 export default function Admin() {
   const [location] = useLocation();
   const sectionPart = location.replace(/^\/admin\/?/, "").split("/")[0];
-  const section: AdminSection = ["products", "categories", "plants", "articles", "settings"].includes(sectionPart) ? sectionPart as AdminSection : "overview";
+  const section: AdminSection = ["products", "categories", "plants", "articles", "artisans", "settings"].includes(sectionPart) ? sectionPart as AdminSection : "overview";
   const [pin, setPin] = useState("");
   const [unlocked, setUnlocked] = useState(hasValidAdminSession);
   const [pinError, setPinError] = useState("");
@@ -150,6 +153,9 @@ export default function Admin() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [plantMaterials, setPlantMaterials] = useState<PlantMaterial[]>([]);
+  const [submissions, setSubmissions] = useState<ArtisanSubmission[]>([]);
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
   const [product, setProduct] = useState<ProductForm>(blankProduct);
   const [article, setArticle] = useState<ArticleForm>(blankArticle);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(blankCategory);
@@ -166,6 +172,7 @@ export default function Admin() {
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [reviewBusyId, setReviewBusyId] = useState<number | null>(null);
 
   const activeCategories = useMemo(() => categories.filter((item) => item.isActive), [categories]);
   const categoryName = (slug: string, fallback = "Altro") => {
@@ -178,6 +185,9 @@ export default function Admin() {
     setArticles(Array.isArray(data.articles) ? data.articles : []);
     setCategories(Array.isArray(data.categories) ? data.categories : []);
     setPlantMaterials(Array.isArray(data.plantMaterials) ? data.plantMaterials : []);
+    setSubmissions(Array.isArray(data.submissions) ? data.submissions : []);
+    setFacebookUrl(typeof data.siteSettings?.facebookUrl === "string" ? data.siteSettings.facebookUrl : "");
+    setInstagramUrl(typeof data.siteSettings?.instagramUrl === "string" ? data.siteSettings.instagramUrl : "");
   };
 
   const logout = (expired = false) => {
@@ -448,6 +458,65 @@ export default function Admin() {
     }
   };
 
+  const saveSocialSettings = async () => {
+    for (const [value, label, hosts] of [
+      [facebookUrl.trim(), "Facebook", ["facebook.com", "www.facebook.com", "m.facebook.com", "fb.com", "www.fb.com"]],
+      [instagramUrl.trim(), "Instagram", ["instagram.com", "www.instagram.com"]],
+    ] as [string, string, string[]][]) {
+      if (!value) continue;
+      try {
+        const parsed = new URL(value);
+        if (parsed.protocol !== "https:" || !hosts.includes(parsed.hostname.toLowerCase()) || parsed.username || parsed.password) throw new Error();
+      } catch { setError(`Inserisci un link HTTPS valido per ${label}.`); return; }
+    }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await adminRequest("social_settings_save", { facebookUrl: facebookUrl.trim(), instagramUrl: instagramUrl.trim() });
+      setNotice("Link Facebook e Instagram aggiornati.");
+      await load();
+    } catch (saveError) {
+      if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
+      else setError(saveError instanceof Error ? saveError.message : "Link social non aggiornati.");
+    } finally { setBusy(false); }
+  };
+
+  const saveArtisanSubmission = async (item: ArtisanSubmission) => {
+    setReviewBusyId(item.id); setError(""); setNotice("");
+    try {
+      await adminRequest("artisan_update", { id: item.id, submission: { productName: item.productName, description: item.description, category: item.category, priceCents: Math.round(Number(item.priceCents) || 0), correctionNote: item.correctionNote || "" } });
+      await load(); setNotice("Proposta aggiornata.");
+    } catch (saveError) {
+      if (saveError instanceof AdminRequestError && saveError.status === 401) logout(true);
+      else setError(saveError instanceof Error ? saveError.message : "Proposta non aggiornata.");
+    } finally { setReviewBusyId(null); }
+  };
+
+  const decideArtisanSubmission = async (item: ArtisanSubmission, status: "approved" | "rejected" | "changes_requested") => {
+    if (status === "changes_requested" && !item.correctionNote?.trim()) { setError("Inserisci le correzioni richieste prima di inviare il messaggio."); return; }
+    setReviewBusyId(item.id); setError(""); setNotice("");
+    try {
+      await adminRequest("artisan_decide", { id: item.id, status, moderationNote: item.correctionNote || "" });
+      await load();
+      setNotice(status === "approved" ? "Prodotto artigianale approvato e pubblicato." : status === "rejected" ? "Proposta rifiutata." : "Richiesta di correzione registrata.");
+    } catch (decisionError) {
+      if (decisionError instanceof AdminRequestError && decisionError.status === 401) logout(true);
+      else setError(decisionError instanceof Error ? decisionError.message : "Decisione non salvata.");
+    } finally { setReviewBusyId(null); }
+  };
+
+  const deleteArtisanSubmission = async (item: ArtisanSubmission) => {
+    if (!window.confirm(`Eliminare definitivamente la proposta “${item.productName}” e le relative immagini?`)) return;
+    setReviewBusyId(item.id); setError(""); setNotice("");
+    try {
+      await adminRequest("artisan_delete", { id: item.id });
+      await load();
+      setNotice("Proposta e immagini rimosse.");
+    } catch (deleteError) {
+      if (deleteError instanceof AdminRequestError && deleteError.status === 401) logout(true);
+      else setError(deleteError instanceof Error ? deleteError.message : "Proposta non eliminata.");
+    } finally { setReviewBusyId(null); }
+  };
+
   const changePin = async () => {
     if (!/^\d{6,12}$/.test(newPin)) { setError("Il nuovo PIN deve contenere da 6 a 12 cifre."); return; }
     if (newPin !== confirmPin) { setError("I due nuovi PIN non coincidono."); return; }
@@ -550,7 +619,7 @@ export default function Admin() {
                 <div className="admin-card__bottom"><p><span className="admin-dot" /> La categoria viene collegata con uno slug stabile</p><div className="admin-actions"><button className="admin-secondary" type="button" onClick={() => void translateProduct()} disabled={busy}><Sparkles size={14} /> Prepara traduzioni</button><button className="admin-primary" type="button" onClick={() => void saveProduct()} disabled={busy}>{editingProduct ? <Pencil size={14} /> : <Save size={14} />}{editingProduct ? "Aggiorna prodotto" : "Salva e pubblica"}</button>{editingProduct ? <button className="admin-cancel" type="button" onClick={() => { setProduct(blankProduct); setEditingProduct(null); setProductTranslations(null); setTranslationSource(""); }}>Annulla</button> : null}</div></div>
               </section>
               <section className="admin-products">
-                <div className="admin-products__heading"><div><span className="admin-eyebrow"><Package size={13} /> Catalogo live</span><h2>Prodotti <small>({publishedProducts} online · {products.length} totali)</small></h2></div><a href="/#catalogo" target="_blank" rel="noreferrer" className="text-link">Apri la galleria <ExternalLink size={14} /></a></div>
+                <div className="admin-products__heading"><div><span className="admin-eyebrow"><Package size={13} /> Catalogo live</span><h2>Prodotti <small>({publishedProducts} online · {products.length} totali)</small></h2></div><a href="/catalogue" target="_blank" rel="noreferrer" className="text-link">Apri la galleria <ExternalLink size={14} /></a></div>
                 {products.length === 0 ? <div className="admin-empty">Nessun prodotto presente. Aggiungi la prima scheda qui sopra.</div> : <div className="admin-products-list">{products.map((item) => <div className="admin-product-row" key={item.id}><div className="admin-product-row__identity">{item.imageUrl ? <img className="admin-product-thumb" src={item.imageUrl} alt="" /> : <span className="admin-product-thumb admin-product-thumb--empty"><Leaf size={18} /></span>}<div><strong>{item.nameIt}</strong><span>{categoryName(item.categorySlug, item.category)} · {(item.priceCents / 100).toFixed(2)} EUR</span></div></div><span className={item.isPublished === 1 ? "admin-published" : "admin-unpublished"}>{item.isPublished === 1 ? <CheckCircle2 size={13} /> : <Info size={13} />}{item.isPublished === 1 ? "Online" : "Bozza"}</span><button className="admin-publish-toggle" type="button" disabled={statusUpdating !== null} onClick={() => void setPublication("product", item.id, item.isPublished !== 1)}>{statusUpdating === `product:${item.id}` ? "…" : item.isPublished === 1 ? "Nascondi" : "Pubblica"}</button><button className="admin-edit" type="button" aria-label={`Modifica ${item.nameIt}`} onClick={() => beginProductEdit(item)}><Pencil size={15} /></button></div>)}</div>}
               </section>
             </>
@@ -614,13 +683,35 @@ export default function Admin() {
             </>
           )}
 
+          {section === "artisans" && (
+            <section className="admin-artisan-queue">
+              <div className="admin-products__heading"><div><span className="admin-eyebrow"><HandHeart size={13} /> Revisione privata</span><h2>Proposte <small>({submissions.length})</small></h2></div><a href="/artisans" target="_blank" rel="noreferrer" className="text-link">Apri la sezione pubblica <ExternalLink size={14} /></a></div>
+              {submissions.length === 0 ? <div className="admin-empty">Non ci sono ancora proposte di artigiani.</div> : submissions.map((item) => <article className="admin-card artisan-review-card" key={item.id}>
+                <div className="admin-card__top"><div><span className="admin-card__number">PROPOSTA #{item.id} · {new Date(item.createdAt).toLocaleDateString("it-IT")}</span><h2>{item.productName}</h2></div><span className={item.status === "approved" ? "admin-published" : item.status === "rejected" ? "admin-unpublished" : "admin-badge"}>{item.status === "approved" ? "Approvata" : item.status === "rejected" ? "Rifiutata" : item.status === "changes_requested" ? "Correzioni richieste" : "In attesa"}</span></div>
+                <div className="artisan-review-contact"><strong>{item.artisanName}</strong><a href={`mailto:${item.contactEmail}`}>{item.contactEmail}</a>{item.contactPhone ? <a href={`tel:${item.contactPhone}`}>{item.contactPhone}</a> : null}</div>
+                {item.signedImageUrl || item.imageUrl ? <img className="artisan-review-image" src={item.imageUrl || item.signedImageUrl || ""} alt={`Anteprima ${item.productName}`} /> : null}
+                <div className="admin-form-grid artisan-review-fields"><label>Nome prodotto<input value={item.productName} onChange={event => setSubmissions(rows => rows.map(row => row.id === item.id ? { ...row, productName: event.target.value } : row))}/></label><label>Categoria<input value={item.category} onChange={event => setSubmissions(rows => rows.map(row => row.id === item.id ? { ...row, category: event.target.value } : row))}/></label><label>Prezzo EUR<input type="number" min="0" step="0.01" value={(item.priceCents / 100).toFixed(2)} onChange={event => setSubmissions(rows => rows.map(row => row.id === item.id ? { ...row, priceCents: Math.round((Number(event.target.value) || 0) * 100) } : row))}/></label><label className="artisan-review-description">Descrizione<textarea rows={4} value={item.description} onChange={event => setSubmissions(rows => rows.map(row => row.id === item.id ? { ...row, description: event.target.value } : row))}/></label></div>
+                <label className="artisan-review-note">Messaggio per l'artigiano / nota di moderazione<textarea rows={2} maxLength={2000} value={item.correctionNote || ""} onChange={event => setSubmissions(rows => rows.map(row => row.id === item.id ? { ...row, correctionNote: event.target.value } : row))} placeholder="Indica qui eventuali correzioni richieste…"/></label>
+                <div className="admin-actions artisan-review-actions"><button className="admin-secondary" type="button" disabled={reviewBusyId === item.id} onClick={() => void saveArtisanSubmission(item)}><Save size={14}/> Salva modifiche</button><button className="admin-secondary" type="button" disabled={reviewBusyId === item.id} onClick={() => void decideArtisanSubmission(item,"changes_requested")}>Richiedi correzioni</button><button className="admin-primary" type="button" disabled={reviewBusyId === item.id || item.status === "approved"} onClick={() => void decideArtisanSubmission(item,"approved")}><CheckCircle2 size={14}/> Approva e pubblica</button><button className="admin-danger" type="button" disabled={reviewBusyId === item.id || item.status === "rejected"} onClick={() => void decideArtisanSubmission(item,"rejected")}>Rifiuta</button><button className="admin-danger" type="button" disabled={reviewBusyId === item.id} onClick={() => void deleteArtisanSubmission(item)}><Trash2 size={14}/> Elimina proposta e immagini</button></div>
+              </article>)}
+            </section>
+          )}
+
           {section === "settings" && (
+            <>
+            <section className="admin-card admin-social-card">
+              <div className="admin-card__top"><div><span className="admin-card__number">01 / SOCIAL</span><h2>Profili Renacer</h2></div><span className="admin-badge"><ExternalLink size={12}/> Link pubblici</span></div>
+              <p className="admin-social-intro">Aggiungi i link esatti dei profili ufficiali. Puoi scegliere e cambiare la pagina Facebook quando vuoi; i link vuoti non mostrano icone sul sito.</p>
+              <div className="admin-security-form"><label>Facebook<input type="url" maxLength={2048} value={facebookUrl} onChange={event => setFacebookUrl(event.target.value)} placeholder="https://www.facebook.com/…"/></label><label>Instagram<input type="url" maxLength={2048} value={instagramUrl} onChange={event => setInstagramUrl(event.target.value)} placeholder="https://www.instagram.com/…"/></label></div>
+              <div className="admin-card__bottom"><p><ShieldCheck size={14}/> Sono accettati solo link HTTPS Facebook e Instagram</p><button className="admin-primary" type="button" onClick={() => void saveSocialSettings()} disabled={busy}><Save size={14}/> Salva link social</button></div>
+            </section>
             <section className="admin-card admin-security-card">
               <div className="admin-card__top"><div><span className="admin-card__number">01 / ACCESSO</span><h2>Cambia il PIN</h2></div><span className="admin-badge"><KeyRound size={12} /> Protetto</span></div>
               <div className="admin-security-intro"><div className="admin-security-intro__icon"><LockKeyhole size={20} /></div><div><strong>Il codice resta privato</strong><p>Il nuovo PIN viene salvato solo come hash con salt. Al termine uscirai automaticamente e dovrai effettuare un nuovo accesso.</p></div></div>
               <div className="admin-security-form"><label>PIN attuale<input type="password" inputMode="numeric" autoComplete="current-password" value={currentPin} onChange={(event) => setCurrentPin(event.target.value)} placeholder="••••••" /></label><label>Nuovo PIN<input type="password" inputMode="numeric" autoComplete="new-password" value={newPin} onChange={(event) => setNewPin(event.target.value)} placeholder="6–12 cifre" /></label><label>Conferma nuovo PIN<input type="password" inputMode="numeric" autoComplete="new-password" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value)} placeholder="Ripeti il nuovo PIN" /></label></div>
               <div className="admin-card__bottom"><p><ShieldCheck size={14} /> La modifica invalida le sessioni precedenti</p><button className="admin-primary" type="button" onClick={() => void changePin()} disabled={busy}><KeyRound size={14} /> Aggiorna PIN</button></div>
             </section>
+            </>
           )}
         </main>
       </div>

@@ -526,11 +526,16 @@ Deno.serve(async (req: Request) => {
     if (action === "content_delete") {
       const kind = String(body.kind || "");
       const id = Number(body.id);
-      const table = kind === "article" ? "nutrition_articles" : kind === "product" ? "products" : "";
+      const table = kind === "article" ? "nutrition_articles" : kind === "product" ? "products" : kind === "plant" ? "plant_materials" : "";
       if (!table || !Number.isSafeInteger(id) || id < 1) return json({ error: "Contenuto non valido." }, 400);
       if (kind === "product") {
         const relations = await db(`product_plant_materials?productId=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
         if (!relations.ok) return json({ error: errorMessage(relations.data) }, relations.status);
+      }
+      if (kind === "plant") {
+        const relations = await db(`product_plant_materials?plantSlug=eq.${encodeURIComponent(String(body.slug || ""))}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+        if (!relations.ok) return json({ error: errorMessage(relations.data) }, relations.status);
+        return writeResult(await db(`plant_materials?slug=eq.${encodeURIComponent(String(body.slug || ""))}`, { method: "DELETE", headers: { Prefer: "return=representation" } }));
       }
       return writeResult(await db(`${table}?id=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=representation" } }));
     }

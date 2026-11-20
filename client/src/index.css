@@ -368,7 +368,8 @@ h1 em, h2 em { color: var(--terracotta); font-style: italic; }
 .admin-product-row span { color: #7d8679; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .admin-product-row img { width: 58px; height: 58px; justify-self: center; }
 .admin-row-actions { display: flex; align-items: center; gap: 2px; }
-.admin-edit, .admin-delete { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: transparent; }
+.admin-edit, .admin-delete { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 0 7px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 10px; cursor: pointer; }
+.admin-edit span, .admin-delete span { display: inline; }
 .admin-edit { color: var(--forest); }
 .admin-edit:hover { background: #e4eee0; }
 .admin-delete { display: grid; place-items: center; width: 30px; height: 30px; border: 0; color: #ac6655; background: transparent; }
@@ -957,7 +958,7 @@ body { background: var(--paper); color: var(--ink); }
   .category-row__name strong { font-size: 17px; }
   .category-row__actions { flex-direction: column; align-items: flex-end; }
   .category-row__actions .admin-publish-toggle { font-size: 8px; }
-  .category-row__actions .admin-edit, .category-row__actions .admin-delete { width: 26px; height: 26px; }
+  .category-row__actions .admin-edit, .category-row__actions .admin-delete { min-height: 26px; padding-inline: 6px; }
   .admin-security-intro { margin-inline: 19px; }
   .admin-security-form { padding-inline: 19px; }
 }

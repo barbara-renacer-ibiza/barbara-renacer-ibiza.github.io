@@ -1313,3 +1313,15 @@ body { background: var(--paper); color: var(--ink); }
 .offers-section__shape { position: relative; overflow: hidden; }
 .offers-section__image { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .plants-hero__brand-mark { align-self: center; justify-self: center; }
+/* Saved image framing controls */
+.admin-frame-editor { display: grid; gap: 9px; }
+.admin-frame-preview { position: relative; display: grid; place-items: center; min-height: 156px; overflow: hidden; border: 1px solid #dfe5db; border-radius: 11px; color: #738173; background: #eff2eb; font-size: 11px; }
+.admin-frame-preview img { width: 100%; height: 156px; object-fit: cover; transition: object-position .15s ease, transform .15s ease; }
+.admin-frame-preview > span { display: flex; align-items: center; gap: 8px; }
+.admin-frame-controls { display: grid; gap: 7px; padding: 9px 10px; border: 1px solid #e0e6dc; border-radius: 10px; background: #f8faf5; }
+.admin-frame-controls label { display: grid; grid-template-columns: 78px minmax(0,1fr); align-items: center; gap: 8px; color: #6b786b; font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.admin-frame-controls input[type="range"] { width: 100%; accent-color: var(--forest); }
+.admin-frame-reset { justify-self: start; padding: 5px 9px; border: 1px solid #d5dfd1; border-radius: 999px; color: #55705b; background: #fffefa; font-size: 9px; }
+.admin-frame-editor > small { color: #849082; font-size: 10px; line-height: 1.45; }
+.nutrition-symbol img { width: 68px; height: 68px; object-fit: contain; }
+@media (max-width: 620px) { .admin-frame-preview, .admin-frame-preview img { min-height: 190px; height: 190px; } }

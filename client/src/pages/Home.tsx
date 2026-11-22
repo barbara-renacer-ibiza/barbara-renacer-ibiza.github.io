@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { imageFrameStyle } from "../lib/imageFrame";
 import {
   ArrowDown,
   ArrowUpRight,
   BookOpen,
   Check,
   CircleDot,
+  Compass,
   Heart,
   Languages,
   Leaf,
@@ -30,18 +32,18 @@ const languageLabels: Record<Language, string> = { it: "IT", en: "EN", es: "ES" 
 const copy: Record<Language, Record<string, string>> = {
   it: {
     project: "Il progetto", nutrition: "Nutrizione", catalog: "Catalogo", contact: "Contatti", whatsapp: "Scrivimi su WhatsApp", askNow: "Chiedi ora",
-    kicker: "Cosmetici artigianali · Ibiza", heroTitle: "Tornare a sé", heroAccent: "con calma.", heroLead: "Piante, mani e tempo. Una cura quotidiana ispirata dalla natura e da un modo più lento di vivere.",
-    discover: "Scopri i prodotti", talk: "Parliamone su WhatsApp", projectEyebrow: "Il progetto", projectTitle: "Tra il sapere delle piante e la vita di ogni giorno.", storyLead: "Sono Bárbara. Per me Ibiza è la possibilità di fermarmi e ascoltarmi, lontano dal rumore della vita quotidiana. Renacer è nato da questo desiderio di riconnettermi.", storyBody: "Lavorare con le piante, creare con le mani e incontrare le persone sono il modo in cui voglio vivere questo nuovo capitolo. I miei prodotti e il mio interesse per l'alimentazione naturale sono due espressioni dello stesso percorso.", storyLink: "Conosci la storia", band: "Non un grande laboratorio.", bandAccent: "Una pratica personale.", nutritionEyebrow: "Un approccio più ampio alla cura", nutritionTitle: "La cura passa anche da ciò che mangiamo.", nutritionBody: "La cura della pelle è collegata anche all’alimentazione. Una dieta varia ed equilibrata offre nutrienti importanti per la pelle e per il benessere del corpo. Qui troverai lezioni e appunti di nutrizione naturale, da aggiungere nel tempo.", futureOne: "Lezioni di nutrizione in arrivo", futureTwo: "Testi e immagini aggiungibili in seguito", futureThree: "Contenuti curati da Barbara", catalogEyebrow: "La collezione", catalogTitle: "Scopri la collezione", catalogAccent: "Renacer.", catalogBody: "Esplora i prodotti, guarda le immagini e chiedi a Barbara informazioni o disponibilità su WhatsApp.", emptyEyebrow: "Collezione in preparazione", emptyTitle: "Nessun prodotto pubblicato per ora.", emptyBody: "Se vuoi sapere cosa è disponibile in questo momento, scrivi direttamente su WhatsApp. Barbara sarà felice di raccontartelo.", ask: "Scrivi a Barbara", contactTitle: "Hai una domanda?", contactAccent: "Parliamone.", contactBody: "Per prodotti, disponibilità o prossimi mercati a Ibiza, puoi contattare direttamente Barbara su WhatsApp.", openWhatsapp: "Scrivi su WhatsApp", portraitEyebrow: "Una presenza, non un primo piano", portraitTitle: "La persona dietro Renacer", portraitAccent: "arriva alla fine.", portraitBody: "Barbara Claps · Certified natural and holistic nutrition adviser. Un progetto nato a Ibiza, tra piante, lavoro manuale, ascolto e ingredienti grezzi.", languageNote: "Scegli la lingua del sito",
+    kicker: "Cura personale artigianale · Ibiza", heroTitle: "Tornare a sé", heroAccent: "con semplicità.", heroLead: "Cura personale artigianale, piante, mani e tempo. Un modo più lento e consapevole di prendersi cura di sé.",
+    discover: "Scopri i prodotti", talk: "Parliamone su WhatsApp", projectEyebrow: "Il progetto", projectTitle: "Tra il sapere delle piante e la vita di ogni giorno.", storyLead: "Sono Bárbara. Per me Ibiza è la possibilità di fermarmi e ascoltarmi, lontano dal rumore della vita quotidiana. Renacer è nato da questo desiderio di riconnettermi.", storyBody: "Lavorare con le piante, creare con le mani e incontrare le persone sono il modo in cui voglio vivere questo nuovo capitolo. I miei prodotti e il mio interesse per l'alimentazione naturale sono due espressioni dello stesso percorso.", storyLink: "Conosci la storia", band: "Non un grande laboratorio.", bandAccent: "Una pratica personale.", nutritionEyebrow: "Un approccio più ampio alla cura", nutritionTitle: "La cura della pelle passa anche da ciò che mangiamo", nutritionBody: "La cura della pelle è collegata anche all’alimentazione. Una dieta varia ed equilibrata offre nutrienti importanti per la pelle e per il benessere del corpo. Qui troverai lezioni e appunti di nutrizione naturale, da aggiungere nel tempo.", futureOne: "Lezioni di nutrizione in arrivo", futureTwo: "Testi e immagini aggiungibili in seguito", futureThree: "Contenuti curati da Barbara", catalogEyebrow: "La collezione", catalogTitle: "Scopri la collezione", catalogAccent: "Renacer.", catalogBody: "Esplora i prodotti, guarda le immagini e chiedi a Barbara informazioni o disponibilità su WhatsApp.", emptyEyebrow: "Collezione in preparazione", emptyTitle: "Nessun prodotto pubblicato per ora.", emptyBody: "Se vuoi sapere cosa è disponibile in questo momento, scrivi direttamente su WhatsApp. Barbara sarà felice di raccontartelo.", ask: "Scrivi a Barbara", contactTitle: "Hai una domanda?", contactAccent: "Parliamone.", contactBody: "Per parlare di nutrizione olistica, conoscere i prossimi incontri dedicati al detox o avere informazioni sui prodotti, sulla loro disponibilità e sui mercati dove trovarmi, contattami direttamente.", openWhatsapp: "Scrivi su WhatsApp", portraitEyebrow: "Una presenza, non un primo piano", portraitTitle: "La persona dietro Renacer", portraitAccent: "una storia che continua.", portraitBody: "Barbara Claps · Certified natural and holistic nutrition adviser. La persona che dà vita a Renacer, tra piante, lavoro manuale, ascolto e ingredienti grezzi.", languageNote: "Scegli la lingua del sito",
   },
   en: {
     project: "The project", nutrition: "Nutrition", catalog: "Catalogue", contact: "Contact", whatsapp: "Write on WhatsApp", askNow: "Ask now",
     kicker: "Handcrafted skincare · Ibiza", heroTitle: "Back to yourself", heroAccent: "slowly.", heroLead: "Plants, hands and time. Everyday care inspired by nature and a slower way of living.",
-    discover: "Explore the products", talk: "Talk on WhatsApp", projectEyebrow: "The project", projectTitle: "Between plant knowledge and everyday life.", storyLead: "I'm Bárbara. For me, Ibiza offers the chance to pause and listen to myself, away from the noise of everyday life. Renacer grew from that desire to reconnect.", storyBody: "Working with plants, making things by hand and meeting people are how I want to live this new chapter. My products and my interest in natural eating are two expressions of this journey.", storyLink: "Read my story", band: "Not a large laboratory.", bandAccent: "A personal practice.", nutritionEyebrow: "A broader approach to care", nutritionTitle: "Care is also connected to what we eat.", nutritionBody: "Skin care also connects with what we eat. A varied, balanced diet provides nutrients important to skin and whole-body wellbeing. This is where Barbara will share lessons and notes on natural nutrition over time.", futureOne: "Nutrition lessons coming soon", futureTwo: "Texts and images can be added later", futureThree: "Content curated by Barbara", catalogEyebrow: "The collection", catalogTitle: "Explore the Renacer", catalogAccent: "collection.", catalogBody: "Browse the products, see the images, and ask Barbara about details or availability on WhatsApp.", emptyEyebrow: "Collection in preparation", emptyTitle: "No products published yet.", emptyBody: "To find out what is available right now, write directly on WhatsApp. Barbara will be happy to tell you about it.", ask: "Message Barbara", contactTitle: "Have a question?", contactAccent: "Let's talk.", contactBody: "For products, availability or upcoming markets in Ibiza, contact Barbara directly on WhatsApp.", openWhatsapp: "Message on WhatsApp", portraitEyebrow: "A presence, not a close-up", portraitTitle: "The person behind Renacer", portraitAccent: "comes at the end.", portraitBody: "Barbara Claps · Certified natural and holistic nutrition adviser. A project born in Ibiza, between plants, handmade work, listening and raw ingredients.", languageNote: "Choose the site language",
+    discover: "Explore the products", talk: "Talk on WhatsApp", projectEyebrow: "The project", projectTitle: "Between plant knowledge and everyday life.", storyLead: "I'm Bárbara. For me, Ibiza offers the chance to pause and listen to myself, away from the noise of everyday life. Renacer grew from that desire to reconnect.", storyBody: "Working with plants, making things by hand and meeting people are how I want to live this new chapter. My products and my interest in natural eating are two expressions of this journey.", storyLink: "Read my story", band: "Not a large laboratory.", bandAccent: "A personal practice.", nutritionEyebrow: "A broader approach to care", nutritionTitle: "Skin care also passes through what we eat.", nutritionBody: "Skin care also connects with what we eat. A varied, balanced diet provides nutrients important to skin and whole-body wellbeing. This is where Barbara will share lessons and notes on natural nutrition over time.", futureOne: "Nutrition lessons coming soon", futureTwo: "Texts and images can be added later", futureThree: "Content curated by Barbara", catalogEyebrow: "The collection", catalogTitle: "Explore the Renacer", catalogAccent: "collection.", catalogBody: "Browse the products, see the images, and ask Barbara about details or availability on WhatsApp.", emptyEyebrow: "Collection in preparation", emptyTitle: "No products published yet.", emptyBody: "To find out what is available right now, write directly on WhatsApp. Barbara will be happy to tell you about it.", ask: "Message Barbara", contactTitle: "Have a question?", contactAccent: "Let's talk.", contactBody: "To talk about holistic nutrition, upcoming detox meetings, products, availability or the markets where to find me, contact me directly.", openWhatsapp: "Message on WhatsApp", portraitEyebrow: "A presence, not a close-up", portraitTitle: "The person behind Renacer", portraitAccent: "a story in progress.", portraitBody: "Barbara Claps · Certified natural and holistic nutrition adviser. The person bringing Renacer to life, between plants, handmade work, listening and raw ingredients.", languageNote: "Choose the site language",
   },
   es: {
     project: "El proyecto", nutrition: "Nutrición", catalog: "Catálogo", contact: "Contacto", whatsapp: "Escríbeme por WhatsApp", askNow: "Consultar ahora",
     kicker: "Cosmética artesanal · Ibiza", heroTitle: "Volver a una misma", heroAccent: "despacio.", heroLead: "Plantas, manos y tiempo. Cuidado cotidiano inspirado en la naturaleza y en una forma más lenta de vivir.",
-    discover: "Explora los productos", talk: "Hablemos por WhatsApp", projectEyebrow: "El proyecto", projectTitle: "Entre el saber de las plantas y la vida cotidiana.", storyLead: "Soy Bárbara. Para mí, Ibiza ofrece la posibilidad de parar y escucharme, lejos del ruido de la vida diaria. Renacer nació de ese deseo de reconectar.", storyBody: "Trabajar con plantas, crear con las manos y conocer personas es la forma en que quiero vivir este nuevo capítulo. Mis productos y mi interés por la alimentación natural son dos expresiones de este camino.", storyLink: "Conoce mi historia", band: "No es un gran laboratorio.", bandAccent: "Es una práctica personal.", nutritionEyebrow: "Un enfoque más amplio del cuidado", nutritionTitle: "El cuidado también se relaciona con lo que comemos.", nutritionBody: "El cuidado de la piel también conecta con la alimentación. Una dieta variada y equilibrada aporta nutrientes importantes para la piel y el bienestar del cuerpo. Aquí Barbara compartirá lecciones y notas de nutrición natural con el tiempo.", futureOne: "Próximamente: lecciones de nutrición", futureTwo: "Textos e imágenes para añadir más adelante", futureThree: "Contenido preparado por Barbara", catalogEyebrow: "La colección", catalogTitle: "Explora la colección", catalogAccent: "Renacer.", catalogBody: "Descubre los productos, mira sus imágenes y pregunta a Barbara por WhatsApp sobre detalles o disponibilidad.", emptyEyebrow: "Colección en preparación", emptyTitle: "Todavía no hay productos publicados.", emptyBody: "Para saber qué está disponible ahora, escribe directamente por WhatsApp. Barbara estará encantada de contártelo.", ask: "Escribir a Barbara", contactTitle: "¿Tienes una pregunta?", contactAccent: "Hablemos.", contactBody: "Para productos, disponibilidad o próximos mercados en Ibiza, contacta directamente con Barbara por WhatsApp.", openWhatsapp: "Escribir por WhatsApp", portraitEyebrow: "Una presencia, no un primer plano", portraitTitle: "La persona detrás de Renacer", portraitAccent: "llega al final.", portraitBody: "Barbara Claps · Certified natural and holistic nutrition adviser. Un proyecto nacido en Ibiza, entre plantas, trabajo manual, escucha e ingredientes brutos.", languageNote: "Elige el idioma del sitio",
+    discover: "Explora los productos", talk: "Hablemos por WhatsApp", projectEyebrow: "El proyecto", projectTitle: "Entre el saber de las plantas y la vida cotidiana.", storyLead: "Soy Bárbara. Para mí, Ibiza ofrece la posibilidad de parar y escucharme, lejos del ruido de la vida diaria. Renacer nació de ese deseo de reconectar.", storyBody: "Trabajar con plantas, crear con las manos y conocer personas es la forma en que quiero vivir este nuevo capítulo. Mis productos y mi interés por la alimentación natural son dos expresiones de este camino.", storyLink: "Conoce mi historia", band: "No es un gran laboratorio.", bandAccent: "Es una práctica personal.", nutritionEyebrow: "Un enfoque más amplio del cuidado", nutritionTitle: "El cuidado de la piel también pasa por lo que comemos", nutritionBody: "El cuidado de la piel también conecta con la alimentación. Una dieta variada y equilibrada aporta nutrientes importantes para la piel y el bienestar del cuerpo. Aquí Barbara compartirá lecciones y notas de nutrición natural con el tiempo.", futureOne: "Próximamente: lecciones de nutrición", futureTwo: "Textos e imágenes para añadir más adelante", futureThree: "Contenido preparado por Barbara", catalogEyebrow: "La colección", catalogTitle: "Explora la colección", catalogAccent: "Renacer.", catalogBody: "Descubre los productos, mira sus imágenes y pregunta a Barbara por WhatsApp sobre detalles o disponibilidad.", emptyEyebrow: "Colección en preparación", emptyTitle: "Todavía no hay productos publicados.", emptyBody: "Para saber qué está disponible ahora, escribe directamente por WhatsApp. Barbara estará encantada de contártelo.", ask: "Escribir a Barbara", contactTitle: "¿Tienes una pregunta?", contactAccent: "Hablemos.", contactBody: "Para hablar de nutrición holística, conocer los próximos encuentros detox o recibir información sobre productos, disponibilidad y mercados, contacta directamente conmigo.", openWhatsapp: "Escribir por WhatsApp", portraitEyebrow: "Una presencia, no un primer plano", portraitTitle: "La persona detrás de Renacer", portraitAccent: "una historia que continúa.", portraitBody: "Barbara Claps · Certified natural and holistic nutrition adviser. La persona que da vida a Renacer, entre plantas, trabajo manual, escucha e ingredientes brutos.", languageNote: "Elige el idioma del sitio",
   },
 };
 
@@ -139,7 +141,7 @@ function ProductCard({ product, language, ctaLabel, categoryLabel, plantMaterial
   return (
     <article className="product-card" id={`product-${product.id}`}>
       <div className="product-card__image-wrap">
-        {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
+        {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" style={imageFrameStyle(product.imageUrl)} /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
       </div>
       <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3><a href={`/catalogue/${encodeURIComponent(product.slug)}`}>{localized.name}</a></h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small>
         {product.INCI?.trim() ? <details className="product-card__inci"><summary>{inciLabel}</summary><p>{product.INCI}</p></details> : null}
@@ -269,7 +271,7 @@ export default function Home() {
           </div>
           <div className="hero__visual">
             <div className="hero__visual-label hero__visual-label--top">Il ritmo di Ibiza</div>
-            <img className="hero__photo" src={assetUrl("/images/renacer-collection.webp")} alt="Fotografia del progetto Renacer a Ibiza" />
+            <img className="hero__photo" src={assetUrl("/images/renacer-hero-nutrition.png")} alt="Fotografia del progetto Renacer a Ibiza" />
             <div className="hero__visual-label hero__visual-label--bottom"><Sprout size={15} /> piante, mani, tempo</div>
           </div>
         </section>
@@ -282,23 +284,53 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="nutrition-section container" id="nutrizione">
+          <div className="nutrition-section__visual">
+            <div className="nutrition-orbit nutrition-orbit--one" />
+            <div className="nutrition-orbit nutrition-orbit--two" />
+            <div className="nutrition-symbol"><img src={assetUrl("/images/logo-woman.png")} alt="Renacer" /></div>
+            <span className="nutrition-note nutrition-note--one">alimentazione naturale</span>
+            <span className="nutrition-note nutrition-note--two">cura dentro e fuori</span>
+          </div>
+          <div className="nutrition-section__copy">
+            <SectionEyebrow icon={<BookOpen size={14} />}>{t("nutritionEyebrow")}</SectionEyebrow>
+            <h2>{t("nutritionTitle")}</h2>
+            <p>{t("nutritionBody")}</p>
+            {articles.length > 0 ? <div className="nutrition-home-articles">{articles.slice(0, 2).map((item) => {
+              const title = articleTitleFor(item, language);
+              const body = articleBodyFor(item, language);
+              return <article key={item.id} className="nutrition-preview">
+                <a className="nutrition-preview__image" href={`/nutrition/${encodeURIComponent(item.slug)}`} aria-label={`${t("learnMore")}: ${title}`}>
+                  {item.imageUrl ? <img src={item.imageUrl} alt={title} loading="lazy" style={imageFrameStyle(item.imageUrl)} /> : <span><Leaf size={23} /></span>}
+                </a>
+                <div><span className="nutrition-preview__label">Renacer · Nutrition</span><h3>{title}</h3><p>{articleExcerpt(body)}</p><a className="nutrition-preview__link" href={`/nutrition/${encodeURIComponent(item.slug)}`}>{t("learnMore")} <ArrowUpRight size={14} /></a></div>
+              </article>;
+            })}</div> : <div className="future-list">
+              <div><Check size={16} /> {t("futureOne")}</div>
+              <div><Check size={16} /> {t("futureTwo")}</div>
+              <div><Check size={16} /> {t("futureThree")}</div>
+            </div>}
+            <a className="arrow-link nutrition-all-articles" href="/nutrition">{t("allArticles")} <ArrowUpRight size={15} /></a>
+          </div>
+        </section>
+
         {showSocialSection && (
           <section className="social-section container" aria-label="Social media">
-            <div className="social-section__intro">
-              <SectionEyebrow icon={<Heart size={14} />}>{language === "en" ? "Stay connected" : language === "es" ? "Sigamos conectados" : "Restiamo in contatto"}</SectionEyebrow>
-              <h2>{language === "en" ? "Follow the Renacer rhythm." : language === "es" ? "Sigue el ritmo de Renacer." : "Segui il ritmo di Renacer."}</h2>
-              <p>{language === "en" ? "Small rituals, new botanical ideas and life in Ibiza, shared from the project as it grows." : language === "es" ? "Pequeños rituales, nuevas ideas botánicas y vida en Ibiza, compartidos mientras crece el proyecto." : "Piccoli rituali, idee botaniche e vita a Ibiza, condivisi mentre il progetto cresce."}</p>
-            </div>
-            <div className="social-section__cards">
-              <a className={socialLinks.instagramUrl ? "social-card social-card--instagram" : "social-card social-card--instagram is-disabled"} href={socialLinks.instagramUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.instagramUrl} onClick={(event) => { if (!socialLinks.instagramUrl) event.preventDefault(); }}>
-                <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.6" cy="6.6" r=".8" /></svg></span>
-                <span><small>Instagram</small><strong>{socialLinks.instagramUrl ? (language === "en" ? "See the latest" : language === "es" ? "Ver lo último" : "Scopri le novità") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
-              </a>
-              <a className={socialLinks.facebookUrl ? "social-card social-card--facebook" : "social-card social-card--facebook is-disabled"} href={socialLinks.facebookUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.facebookUrl} onClick={(event) => { if (!socialLinks.facebookUrl) event.preventDefault(); }}>
-                <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z" /></svg></span>
-                <span><small>Facebook</small><strong>{socialLinks.facebookUrl ? (language === "en" ? "Join the community" : language === "es" ? "Únete a la comunidad" : "Entra nella community") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
-              </a>
-            </div>
+          <div className="social-section__intro">
+            <SectionEyebrow icon={<Heart size={14} />}>{language === "en" ? "Stay connected" : language === "es" ? "Sigamos conectados" : "Restiamo in contatto"}</SectionEyebrow>
+            <h2>{language === "en" ? "Follow the Renacer rhythm." : language === "es" ? "Sigue el ritmo de Renacer." : "Segui il ritmo di Renacer."}</h2>
+            <p>{language === "en" ? "Small rituals, new botanical ideas and life in Ibiza, shared from the project as it grows." : language === "es" ? "Pequeños rituales, nuevas ideas botánicas y vida en Ibiza, compartidos mientras crece el proyecto." : "Piccoli rituali, idee botaniche e vita a Ibiza, condivisi mentre il progetto cresce."}</p>
+          </div>
+          <div className="social-section__cards">
+            <a className={socialLinks.instagramUrl ? "social-card social-card--instagram" : "social-card social-card--instagram is-disabled"} href={socialLinks.instagramUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.instagramUrl} onClick={(event) => { if (!socialLinks.instagramUrl) event.preventDefault(); }}>
+              <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.6" cy="6.6" r=".8" /></svg></span>
+              <span><small>Instagram</small><strong>{socialLinks.instagramUrl ? (language === "en" ? "See the latest" : language === "es" ? "Ver lo último" : "Scopri le novità") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
+            </a>
+            <a className={socialLinks.facebookUrl ? "social-card social-card--facebook" : "social-card social-card--facebook is-disabled"} href={socialLinks.facebookUrl || undefined} target="_blank" rel="noopener noreferrer" aria-disabled={!socialLinks.facebookUrl} onClick={(event) => { if (!socialLinks.facebookUrl) event.preventDefault(); }}>
+              <span className="social-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z" /></svg></span>
+              <span><small>Facebook</small><strong>{socialLinks.facebookUrl ? (language === "en" ? "Join the community" : language === "es" ? "Únete a la comunidad" : "Entra nella community") : (language === "en" ? "Coming soon" : language === "es" ? "Próximamente" : "Presto online")}</strong></span><ArrowUpRight size={17} />
+            </a>
+          </div>
           </section>
         )}
 
@@ -320,32 +352,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="nutrition-section container" id="nutrizione">
-          <div className="nutrition-section__visual">
-            <img className="nutrition-section__image" src={assetUrl("/images/nutrition-table.webp")} alt={language === "en" ? "Mediterranean figs, citrus, almonds and olive oil on an Ibiza stone table" : language === "es" ? "Higos, cítricos, almendras y aceite de oliva mediterráneos sobre una mesa de piedra en Ibiza" : "Fichi, agrumi, mandorle e olio d'oliva mediterranei su un tavolo in pietra a Ibiza"} loading="lazy" />
-          </div>
-          <div className="nutrition-section__copy">
-            <SectionEyebrow icon={<BookOpen size={14} />}>{t("nutritionEyebrow")}</SectionEyebrow>
-            <h2>{t("nutritionTitle")}</h2>
-            <p>{t("nutritionBody")}</p>
-            {articles.length > 0 ? <div className="nutrition-home-articles">{articles.slice(0, 2).map((item) => {
-              const title = articleTitleFor(item, language);
-              const body = articleBodyFor(item, language);
-              return <article key={item.id} className="nutrition-preview">
-                <a className="nutrition-preview__image" href={`/nutrition/${encodeURIComponent(item.slug)}`} aria-label={`${t("learnMore")}: ${title}`}>
-                  {item.imageUrl ? <img src={item.imageUrl} alt={title} loading="lazy" /> : <span><Leaf size={23} /></span>}
-                </a>
-                <div><span className="nutrition-preview__label">Renacer · Nutrition</span><h3>{title}</h3><p>{articleExcerpt(body)}</p><a className="nutrition-preview__link" href={`/nutrition/${encodeURIComponent(item.slug)}`}>{t("learnMore")} <ArrowUpRight size={14} /></a></div>
-              </article>;
-            })}</div> : <div className="future-list">
-              <div><Check size={16} /> {t("futureOne")}</div>
-              <div><Check size={16} /> {t("futureTwo")}</div>
-              <div><Check size={16} /> {t("futureThree")}</div>
-            </div>}
-            <a className="arrow-link nutrition-all-articles" href="/nutrition">{t("allArticles")} <ArrowUpRight size={15} /></a>
-          </div>
-        </section>
-
         <section className="story-section container" id="progetto">
           <div className="story-section__heading">
             <SectionEyebrow icon={<Leaf size={14} />}>{t("projectEyebrow")}</SectionEyebrow>
@@ -357,6 +363,33 @@ export default function Home() {
             <a className="arrow-link" href="/nutrition">{t("storyLink")} <ArrowUpRight size={16} /></a>
           </div>
         </section>
+
+        <section className="values-section">
+          <div className="container values-grid">
+            <article className="value-card value-card--warm">
+              <div className="value-card__icon"><Heart size={18} /></div>
+              <span>01</span>
+              <h3>{language === "en" ? "Personal" : language === "es" ? "Personal" : "Personale"}</h3>
+              <p>{language === "en" ? "A living project, close to people and to the person carrying it forward." : language === "es" ? "Un proyecto vivo, cercano a las personas y a quien lo lleva adelante." : "Un progetto in evoluzione, vicino alle persone e alla realtà di chi lo porta avanti."}</p>
+            </article>
+            <article className="value-card value-card--green">
+              <div className="value-card__icon"><Sprout size={18} /></div>
+              <span>02</span>
+              <h3>{language === "en" ? "Essential" : language === "es" ? "Esencial" : "Essenziale"}</h3>
+              <p>{language === "en" ? "Ingredients and words chosen with care, leaving room for simplicity." : language === "es" ? "Ingredientes y palabras elegidos con cuidado, dejando espacio a la sencillez." : "Ingredienti e parole scelti con cura, lasciando spazio alla semplicità."}</p>
+            </article>
+            <article className="value-card value-card--cream">
+              <div className="value-card__icon"><Compass size={18} /></div>
+              <span>03</span>
+              <h3>{language === "en" ? "Listening" : language === "es" ? "Escucha" : "In ascolto"}</h3>
+              <p>{language === "en" ? "A catalogue that grows with real work, never the other way around." : language === "es" ? "Un catálogo que crece con el trabajo real, y no al contrario." : "Un catalogo che crescerà nel tempo, seguendo il lavoro reale e non il contrario."}</p>
+            </article>
+          </div>
+        </section>
+
+
+
+
 
         <section className="offers-section container" id="offerte">
           <div className="offers-section__copy">

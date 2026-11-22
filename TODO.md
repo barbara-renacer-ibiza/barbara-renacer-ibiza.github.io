@@ -58,3 +58,12 @@
 
 ## Payment confirmation
 - [ ] Do not state that the bank transfer succeeded: no bank record or payment evidence is available in this session. Ask the client to confirm through their bank if confirmation is required.
+
+## Client notes — homepage, nutrition and image framing (2026-11-22)
+- [x] Keep `Renacer Ibiza`, use the Italian subtitle `Cura personale artigianale`, and make the logo more visible by reusing it in the Nutrition visual.
+- [x] Order the homepage so the opening comes first, then `La cura della pelle passa anche da ciò che mangiamo` and the Nutrition section, followed by `Scopri la collezione` and catalogue links.
+- [x] Replace the unnatural personal-section ending `arriva alla fine...` with an Italian phrase describing the person bringing Renacer to life; update the contact copy to cover holistic nutrition, detox meetings, products, availability and markets.
+- [x] Add a combined hero image using the existing Renacer/Ibiza skincare composition with figs, pomegranate, avocado and other fresh produce; keep the real products and place recognizable and avoid invented people or labels.
+- [x] In Admin product, article and raw-material image forms, provide a preview plus horizontal/vertical framing and zoom controls with reset; preserve old images and apply saved framing on public catalogue, article and plant renderers.
+- [x] Validate the implementation with `pnpm check`, `pnpm build:static` and `git diff --check`; existing Vite warnings remain non-blocking.
+- [ ] Push the finished changes to `origin/main`, wait for GitHub Pages deployment, then verify the published homepage and `/admin` framing controls.

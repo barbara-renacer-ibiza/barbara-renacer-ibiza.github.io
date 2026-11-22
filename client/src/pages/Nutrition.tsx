@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { imageFrameStyle } from "../lib/imageFrame";
 import { useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Languages, Leaf } from "lucide-react";
 import ShareBar from "@/components/ShareBar";
@@ -126,7 +127,7 @@ export default function Nutrition() {
                 {articles.map((item, index) => (
                   <article className="journal-card" key={item.id}>
                     <a className="journal-card__image" href={`/nutrition/${encodeURIComponent(item.slug)}`} aria-label={`${text.learn}: ${titleFor(item, language)}`}>
-                      {item.imageUrl ? <img src={item.imageUrl} alt={titleFor(item, language)} loading="lazy" /> : <span className="journal-card__placeholder"><Leaf size={31} /></span>}
+                      {item.imageUrl ? <img src={item.imageUrl} alt={titleFor(item, language)} loading="lazy" style={imageFrameStyle(item.imageUrl)} /> : <span className="journal-card__placeholder"><Leaf size={31} /></span>}
                       <span className="journal-card__index">{String(index + 1).padStart(2, "0")}</span>
                     </a>
                     <div className="journal-card__body"><span className="journal-card__eyebrow">{text.eyebrow}</span><h2>{titleFor(item, language)}</h2><p>{excerpt(bodyFor(item, language))}</p><a className="journal-card__link" href={`/nutrition/${encodeURIComponent(item.slug)}`}>{text.learn} <ArrowRight size={15} /></a></div>
@@ -143,7 +144,7 @@ export default function Nutrition() {
         ) : (
           <article className="nutrition-detail">
             <a className="journal-card__link nutrition-detail__back" href="/nutrition"><ArrowLeft size={15} /> {text.back}</a>
-            {article.imageUrl ? <div className="nutrition-detail__image"><img src={article.imageUrl} alt={titleFor(article, language)} /></div> : null}
+            {article.imageUrl ? <div className="nutrition-detail__image"><img src={article.imageUrl} alt={titleFor(article, language)} style={imageFrameStyle(article.imageUrl)} /></div> : null}
             <div className="nutrition-detail__content"><span className="section-eyebrow"><BookOpen size={14} /> {text.eyebrow}</span><h1>{titleFor(article, language)}</h1><div className="nutrition-detail__body">{paragraphs(bodyFor(article, language)).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><ShareBar title={titleFor(article, language)} path={`/nutrition/${encodeURIComponent(article.slug)}`} language={language}/><p className="nutrition-disclaimer">{text.notice}</p></div>
           </article>
         )}

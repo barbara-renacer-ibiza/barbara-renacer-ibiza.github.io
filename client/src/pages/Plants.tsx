@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { imageFrameStyle } from "../lib/imageFrame";
 import { ArrowLeft, ArrowUpRight, ExternalLink, Leaf, Languages, Search, Sprout } from "lucide-react";
 import { useRoute } from "wouter";
 import ShareBar from "@/components/ShareBar";
@@ -172,7 +173,7 @@ export default function Plants() {
                 const related = relations.filter((relation) => relation.plantSlug === material.slug).map((relation) => products.find((product) => product.id === relation.productId)).filter((product): product is Product => Boolean(product));
                 const safety = materialSafety(material, language);
                 return <article className={selectedSlug === material.slug ? "plant-card is-highlighted" : "plant-card"} id={`material-${material.slug}`} key={material.slug}>
-                  {material.imageUrl ? <img className="plant-card__image" src={material.imageUrl} alt={materialName(material, language)} loading="lazy" /> : null}
+                  {material.imageUrl ? <img className="plant-card__image" src={material.imageUrl} alt={materialName(material, language)} loading="lazy" style={imageFrameStyle(material.imageUrl)} /> : null}
                   <div className="plant-card__top"><span>{String(index + 1).padStart(2, "0")}</span><Leaf size={17} /></div>
                   <h3><a href={`/plants/${encodeURIComponent(material.slug)}`}>{materialName(material, language)}</a></h3>
                   {material.botanicalName ? <p className="plant-card__botanical"><i>{material.botanicalName}</i></p> : null}

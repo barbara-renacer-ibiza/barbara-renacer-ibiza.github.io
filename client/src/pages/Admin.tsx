@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { imageFrameStyle, parseImageFrame, withImageFrame, type ImageFrame } from "../lib/imageFrame";
 import { Link, useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -139,6 +140,24 @@ const navItems: { id: AdminSection; label: string; icon: typeof Package; descrip
   { id: "artisans", label: "Artisan Submissions", icon: HandHeart, description: "Richieste e revisione" },
   { id: "settings", label: "Impostazioni", icon: Settings2, description: "Social e sicurezza" },
 ];
+
+function ImageFrameEditor({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
+  const frame = parseImageFrame(value);
+  const update = (patch: Partial<ImageFrame>) => onChange(withImageFrame(value, { ...frame, ...patch }));
+  return (
+    <div className="admin-frame-editor">
+      <div className="admin-frame-preview" aria-label={`Anteprima ${label}`}>
+        {value ? <img src={value} alt={`Anteprima ${label}`} style={imageFrameStyle(value)} /> : <span><ImageIcon size={17} /> Anteprima immagine</span>}
+      </div>
+      {value ? <div className="admin-frame-controls">
+        <label>Orizzontale <input type="range" min="0" max="100" step="1" value={frame.x} onChange={(event) => update({ x: Number(event.target.value) })} /></label>
+        <label>Verticale <input type="range" min="0" max="100" step="1" value={frame.y} onChange={(event) => update({ y: Number(event.target.value) })} /></label>
+        <label>Zoom <input type="range" min="1" max="2.5" step="0.05" value={frame.scale} onChange={(event) => update({ scale: Number(event.target.value) })} /></label>
+        <button className="admin-frame-reset" type="button" onClick={() => onChange(withImageFrame(value, { x: 50, y: 50, scale: 1 }))}>Reimposta</button>
+      </div> : <small>Carica una foto per regolare inquadratura, posizione e zoom.</small>}
+    </div>
+  );
+}
 
 export default function Admin() {
   const [location] = useLocation();
@@ -632,7 +651,7 @@ export default function Admin() {
                   <fieldset className="admin-material-assignment"><legend>Materie prime collegate</legend><p>Seleziona solo quelle confermate nella composizione di questo prodotto.</p><div className="admin-material-options">{plantMaterials.map((item) => <label key={item.slug}><input type="checkbox" checked={product.plantSlugs.includes(item.slug)} onChange={(event) => setProduct((value) => ({ ...value, plantSlugs: event.target.checked ? [...new Set([...value.plantSlugs, item.slug])] : value.plantSlugs.filter((slug) => slug !== item.slug) }))} /><span>{item.nameIt}</span></label>)}</div></fieldset>
                 </div>
                 <div className="admin-form-grid admin-form-grid--compact"><label><span>Messaggio WhatsApp opzionale</span><input value={product.whatsappMessage} onChange={(event) => setProduct({ ...product, whatsappMessage: event.target.value })} placeholder="Es. Ciao Barbara, vorrei saperne di più..." /></label></div>
-                <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "product" ? "Caricamento immagine..." : product.imageUrl ? "Sostituisci immagine prodotto" : "Carica immagine prodotto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "product"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><div className="admin-image-preview">{product.imageUrl ? <><img src={product.imageUrl} alt="Anteprima immagine prodotto" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine prodotto" onClick={() => setProduct({ ...product, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div></div>
+                <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "product" ? "Caricamento immagine..." : product.imageUrl ? "Sostituisci immagine prodotto" : "Carica immagine prodotto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "product"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><ImageFrameEditor value={product.imageUrl} onChange={(imageUrl) => setProduct({ ...product, imageUrl })} label="immagine prodotto" /></div>
                 <div className="admin-card__bottom"><p><span className="admin-dot" /> La categoria viene collegata con uno slug stabile</p><div className="admin-actions"><button className="admin-secondary" type="button" onClick={() => void translateProduct()} disabled={busy}><Sparkles size={14} /> Prepara traduzioni</button><button className="admin-primary" type="button" onClick={() => void saveProduct()} disabled={busy}>{editingProduct ? <Pencil size={14} /> : <Save size={14} />}{editingProduct ? "Aggiorna prodotto" : "Salva e pubblica"}</button>{editingProduct ? <button className="admin-cancel" type="button" onClick={() => { setProduct(blankProduct); setEditingProduct(null); setProductTranslations(null); setTranslationSource(""); }}>Annulla</button> : null}</div></div>
               </section>
               <section className="admin-products">
@@ -674,7 +693,7 @@ export default function Admin() {
                   <label className="admin-plant-safety">Nota di cautela in italiano<textarea rows={3} value={plantForm.safetyIt} onChange={(event) => setPlantForm({ ...plantForm, safetyIt: event.target.value })} placeholder="Facoltativa; aggiungi solo cautele pertinenti e supportate." /></label>
                   <div className="admin-plant-image-upload">
                     <div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "plant" ? "Caricamento immagine..." : plantForm.imageUrl ? "Sostituisci immagine" : "Carica immagine della pianta"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "plant"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div>
-                    <div className="admin-image-preview admin-plant-image-preview">{plantForm.imageUrl ? <><img src={plantForm.imageUrl} alt="Anteprima della materia prima" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine della materia prima" onClick={() => setPlantForm({ ...plantForm, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Nessuna immagine caricata</span>}</div>
+                    <ImageFrameEditor value={plantForm.imageUrl} onChange={(imageUrl) => setPlantForm({ ...plantForm, imageUrl })} label="immagine della materia prima" />
                   </div>
                 </div>
                 <div className="admin-card__bottom"><p><Info size={14} /> Scrivi in italiano: nome, descrizione e cautele saranno tradotti automaticamente in inglese e spagnolo al salvataggio.</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void savePlant()} disabled={busy || imageUploading !== null}>{editingPlant ? <Save size={14} /> : <Plus size={14} />}{busy ? "Traduzione e salvataggio..." : editingPlant ? "Salva materia" : "Aggiungi alla guida"}</button>{editingPlant ? <button className="admin-cancel" type="button" onClick={() => { setPlantForm(blankPlant); setEditingPlant(null); }}>Annulla</button> : null}</div></div>
@@ -690,7 +709,7 @@ export default function Admin() {
               <section className="admin-card admin-article-card">
                 <div className="admin-card__top"><div><span className="admin-card__number">01 / NUTRITION</span><h2>{editingArticle ? "Modifica articolo" : "Nuovo articolo"}</h2></div><span className="admin-badge"><BookOpen size={12} /> Una pagina per ogni storia</span></div>
                 <div className="admin-form-grid"><label>Titolo dell'articolo<input value={article.title} onChange={(event) => setArticle({ ...article, title: event.target.value })} placeholder="Es. Una cura più ampia" /></label><label>Testo dell'articolo<textarea value={article.body} onChange={(event) => setArticle({ ...article, body: event.target.value })} rows={8} placeholder="Scrivi una nota per la sezione Nutrition..." /></label></div>
-                <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "article" ? "Caricamento immagine..." : article.imageUrl ? "Sostituisci immagine articolo" : "Carica immagine articolo"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "article"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><div className="admin-image-preview">{article.imageUrl ? <><img src={article.imageUrl} alt="Anteprima immagine articolo" /><button className="admin-image-remove" type="button" aria-label="Rimuovi immagine articolo" onClick={() => setArticle({ ...article, imageUrl: "" })}>×</button></> : <span><ImageIcon size={17} /> Anteprima immagine</span>}</div></div>
+                <div className="admin-extra-grid admin-image-grid admin-image-fields"><div className="admin-upload-label"><label className="admin-upload-control"><ImageIcon size={16} /><span>{imageUploading === "article" ? "Caricamento immagine..." : article.imageUrl ? "Sostituisci immagine articolo" : "Carica immagine articolo"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={busy || imageUploading !== null} onChange={(event) => { void uploadImage(event.currentTarget.files?.[0], "article"); event.currentTarget.value = ""; }} /></span></label><small>JPG, PNG, WebP, GIF o AVIF · max 10 MB</small></div><ImageFrameEditor value={article.imageUrl} onChange={(imageUrl) => setArticle({ ...article, imageUrl })} label="immagine articolo" /></div>
                 <div className="admin-card__bottom"><p><FileText size={14} /> In homepage appare solo un estratto con “Learn more”</p><div className="admin-actions"><button className="admin-primary" type="button" onClick={() => void saveArticle()} disabled={busy}>{editingArticle ? <Pencil size={14} /> : <Plus size={14} />}{editingArticle ? "Aggiorna articolo" : "Pubblica articolo"}</button>{editingArticle ? <button className="admin-cancel" type="button" onClick={() => { setArticle(blankArticle); setEditingArticle(null); }}>Annulla</button> : null}</div></div>
               </section>
               <section className="admin-products admin-articles-list">

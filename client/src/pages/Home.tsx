@@ -272,7 +272,7 @@ export default function Home() {
           <div className="hero__visual">
             <div className="hero__visual-label hero__visual-label--top">{language === "en" ? "The rhythm of Ibiza" : language === "es" ? "El ritmo de Ibiza" : "Il ritmo di Ibiza"}</div>
             <img className="hero__photo" src={assetUrl("/images/renacer-hero-nutrition.png")} alt={language === "en" ? "Renacer project photograph in Ibiza" : language === "es" ? "Fotografía del proyecto Renacer en Ibiza" : "Fotografia del progetto Renacer a Ibiza"} />
-            <img className="hero__brand-overlay" src={assetUrl("/images/logo-woman.png")} alt="" aria-hidden="true" />
+            <img className="hero__brand-overlay" src={assetUrl("/images/logo-woman-transparent.png")} alt="" aria-hidden="true" />
             <div className="hero__visual-label hero__visual-label--bottom"><Sprout size={15} /> {language === "en" ? "plants, hands, time" : language === "es" ? "plantas, manos, tiempo" : "piante, mani, tempo"}</div>
           </div>
         </section>
@@ -289,7 +289,7 @@ export default function Home() {
           <div className="nutrition-section__visual">
             <img className="nutrition-section__image" src={assetUrl("/images/nutrition-table.webp")} alt={language === "en" ? "Figs, citrus, almonds and olive oil on an Ibiza stone table" : language === "es" ? "Higos, cítricos, almendras y aceite de oliva sobre una mesa de piedra en Ibiza" : "Fichi, agrumi, mandorle e olio d'oliva su una tavola in pietra a Ibiza"} loading="lazy" />
             <div className="nutrition-section__veil" aria-hidden="true" />
-            <div className="nutrition-symbol" aria-hidden="true"><img src={assetUrl("/images/logo-woman.png")} alt="" /></div>
+            <div className="nutrition-symbol" aria-hidden="true"><img src={assetUrl("/images/logo-woman-transparent.png")} alt="" /></div>
             <span className="nutrition-note nutrition-note--one">{language === "en" ? "natural nutrition" : language === "es" ? "alimentación natural" : "alimentazione naturale"}</span>
             <span className="nutrition-note nutrition-note--two">{language === "en" ? "care inside and out" : language === "es" ? "cuidado por dentro y por fuera" : "cura dentro e fuori"}</span>
           </div>

@@ -573,7 +573,12 @@ body { background: var(--paper); color: var(--ink); }
 .value-card--cream { background: #e9eee5; }
 .nutrition-section { gap: clamp(50px, 8vw, 100px); padding-block: 16px 104px; }
 .nutrition-section__visual { border-radius: 18px; background: #e2eadf; }
-.nutrition-section__visual::before { inset: 16px; border-radius: 12px; }
+.nutrition-section__image { display: block; position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.nutrition-section__veil { position: absolute; z-index: 1; inset: 0; background: linear-gradient(180deg, rgba(24, 54, 43, .04), rgba(24, 54, 43, .24)); pointer-events: none; }
+.nutrition-symbol { z-index: 2; width: 106px; height: 106px; background: rgba(33, 70, 56, .78); box-shadow: 0 10px 26px rgba(24, 54, 43, .18); }
+.nutrition-symbol img { width: 72px; height: 72px; object-fit: contain; }
+.nutrition-note { z-index: 2; color: #fffdf7; text-shadow: 0 1px 8px rgba(24, 54, 43, .45); }
+.nutrition-section__visual::before { z-index: 3; inset: 16px; border-radius: 12px; pointer-events: none; }
 .offers-section__shape { border-radius: 18px; }
 .contact-section { background: #214638; }
 .contact-card { border-radius: 16px; }
@@ -1323,5 +1328,5 @@ body { background: var(--paper); color: var(--ink); }
 .admin-frame-controls input[type="range"] { width: 100%; accent-color: var(--forest); }
 .admin-frame-reset { justify-self: start; padding: 5px 9px; border: 1px solid #d5dfd1; border-radius: 999px; color: #55705b; background: #fffefa; font-size: 9px; }
 .admin-frame-editor > small { color: #849082; font-size: 10px; line-height: 1.45; }
-.nutrition-symbol img { width: 68px; height: 68px; object-fit: contain; }
+
 @media (max-width: 620px) { .admin-frame-preview, .admin-frame-preview img { min-height: 190px; height: 190px; } }

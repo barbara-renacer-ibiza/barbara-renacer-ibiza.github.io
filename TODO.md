@@ -67,3 +67,4 @@
 - [x] In Admin product, article and raw-material image forms, provide a preview plus horizontal/vertical framing and zoom controls with reset; preserve old images and apply saved framing on public catalogue, article and plant renderers.
 - [x] Validate the implementation with `pnpm check`, `pnpm build:static` and `git diff --check`; existing Vite warnings remain non-blocking.
 - [ ] Push the finished changes to `origin/main`, wait for GitHub Pages deployment, then verify the published homepage and `/admin` framing controls.
+- [x] إصلاح لوحة صورة قسم التغذية في الصفحة الرئيسية باستخدام صورة التغذية داخل إطار ثابت ومتجاوب، مع إبقاء الشعار واضحًا.

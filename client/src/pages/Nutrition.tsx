@@ -101,7 +101,7 @@ export default function Nutrition() {
         <div className="container header__inner">
           <a className="brand" href="/" aria-label="Renacer Ibiza, home">
             <img className="brand-logo-image" src="/images/logo-woman.png" alt="" />
-            <span className="brand__text"><strong>Renacer</strong><small>Ibiza · cura artigianale</small></span>
+            <span className="brand__text"><strong>Renacer</strong><small>Ibiza · {language === "en" ? "artisan care" : language === "es" ? "cuidado artesanal" : "cura artigianale"}</small></span>
           </a>
           <nav className="nutrition-nav" aria-label="Navigation">
             <a href="/">{text.home}</a><a href="/catalogue">{text.catalog}</a>

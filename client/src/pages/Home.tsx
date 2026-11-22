@@ -272,6 +272,7 @@ export default function Home() {
           <div className="hero__visual">
             <div className="hero__visual-label hero__visual-label--top">{language === "en" ? "The rhythm of Ibiza" : language === "es" ? "El ritmo de Ibiza" : "Il ritmo di Ibiza"}</div>
             <img className="hero__photo" src={assetUrl("/images/renacer-hero-nutrition.png")} alt={language === "en" ? "Renacer project photograph in Ibiza" : language === "es" ? "Fotografía del proyecto Renacer en Ibiza" : "Fotografia del progetto Renacer a Ibiza"} />
+            <img className="hero__brand-overlay" src={assetUrl("/images/logo-woman.png")} alt="" aria-hidden="true" />
             <div className="hero__visual-label hero__visual-label--bottom"><Sprout size={15} /> {language === "en" ? "plants, hands, time" : language === "es" ? "plantas, manos, tiempo" : "piante, mani, tempo"}</div>
           </div>
         </section>

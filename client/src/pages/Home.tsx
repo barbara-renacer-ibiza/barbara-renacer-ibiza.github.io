@@ -288,6 +288,7 @@ export default function Home() {
           <div className="nutrition-section__visual">
             <img className="nutrition-section__image" src={assetUrl("/images/nutrition-table.webp")} alt={language === "en" ? "Figs, citrus, almonds and olive oil on an Ibiza stone table" : language === "es" ? "Higos, cítricos, almendras y aceite de oliva sobre una mesa de piedra en Ibiza" : "Fichi, agrumi, mandorle e olio d'oliva su una tavola in pietra a Ibiza"} loading="lazy" />
             <div className="nutrition-section__veil" aria-hidden="true" />
+            <div className="nutrition-symbol" aria-hidden="true"><img src={assetUrl("/images/logo-woman.png")} alt="" /></div>
             <span className="nutrition-note nutrition-note--one">{language === "en" ? "natural nutrition" : language === "es" ? "alimentación natural" : "alimentazione naturale"}</span>
             <span className="nutrition-note nutrition-note--two">{language === "en" ? "care inside and out" : language === "es" ? "cuidado por dentro y por fuera" : "cura dentro e fuori"}</span>
           </div>

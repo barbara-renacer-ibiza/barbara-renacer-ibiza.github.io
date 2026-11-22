@@ -401,6 +401,7 @@ export default function Home() {
           </div>
           <div className="offers-section__shape">
             <img className="offers-section__image" src={assetUrl("/images/seasonal-gifts.webp")} alt={language === "en" ? "A seasonal botanical skincare gift set arranged on sunlit Ibiza stone" : language === "es" ? "Un conjunto de regalo de cosmética botánica de temporada sobre piedra iluminada en Ibiza" : "Un regalo stagionale di cosmetici botanici su pietra soleggiata a Ibiza"} loading="lazy" />
+            <img className="offers__brand-overlay" src={assetUrl("/images/logo-woman-transparent.png")} alt="" aria-hidden="true" />
           </div>
         </section>
 

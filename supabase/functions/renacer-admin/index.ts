@@ -191,8 +191,13 @@ async function translateText(name: string, description: string, safety = "") {
     for (const chunk of splitForTranslation(text)) {
       const translateChunk = async (value: string): Promise<string[]> => {
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(value)}&langpair=it|${lang}`;
-        const response = await fetch(url);
-        if (!response.ok)
+        let response: Response | null = null;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          response = await fetch(url);
+          if (response.ok) break;
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        }
+        if (!response?.ok)
           throw new Error("Servizio di traduzione non disponibile.");
         const result = await response.json();
         const translated = result?.responseData?.translatedText;
@@ -216,15 +221,12 @@ async function translateText(name: string, description: string, safety = "") {
     }
     return translatedChunks.join("\n\n");
   };
-  const [enName, enDescription, esName, esDescription, enSafety, esSafety] =
-    await Promise.all([
-      translate(name, "en"),
-      translate(description, "en"),
-      translate(name, "es"),
-      translate(description, "es"),
-      translate(safety, "en"),
-      translate(safety, "es"),
-    ]);
+  const enName = await translate(name, "en");
+  const enDescription = await translate(description, "en");
+  const esName = await translate(name, "es");
+  const esDescription = await translate(description, "es");
+  const enSafety = await translate(safety, "en");
+  const esSafety = await translate(safety, "es");
   return {
     it: { name, description, safety },
     en: { name: enName, description: enDescription, safety: enSafety },

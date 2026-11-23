@@ -241,17 +241,23 @@ function splitTranslationText(text: string, limit = 450) {
   return chunks.length ? chunks : [text.trim()];
 }
 
-async function translateArticleInBrowser(title: string, body: string) {
+async function translateItalianInBrowser(title: string, body: string) {
   const translate = async (text: string, lang: "en" | "es") => {
     const translated: string[] = [];
     for (const chunk of splitTranslationText(text)) {
-      const response = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=it|${lang}`
-      );
-      const result = await response.json().catch(() => ({}));
+      let response: Response | null = null;
+      let result: any = {};
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        response = await fetch(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=it|${lang}`
+        );
+        result = await response.json().catch(() => ({}));
+        if (response.ok) break;
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      }
       const value = result?.responseData?.translatedText;
       if (
-        !response.ok ||
+        !response?.ok ||
         typeof value !== "string" ||
         !value.trim() ||
         value.includes("QUERY LENGTH LIMIT EXCEEDED")
@@ -261,12 +267,10 @@ async function translateArticleInBrowser(title: string, body: string) {
     }
     return translated.join("\n\n");
   };
-  const [titleEn, titleEs, bodyEn, bodyEs] = await Promise.all([
-    translate(title, "en"),
-    translate(title, "es"),
-    translate(body, "en"),
-    translate(body, "es"),
-  ]);
+  const titleEn = await translate(title, "en");
+  const titleEs = await translate(title, "es");
+  const bodyEn = await translate(body, "en");
+  const bodyEs = await translate(body, "es");
   return {
     en: { name: titleEn, description: bodyEn },
     es: { name: titleEs, description: bodyEs },
@@ -737,11 +741,7 @@ export default function Admin() {
     setError("");
     setNotice("");
     try {
-      const translated = await adminRequest("translate", {
-        sourceLanguage: "it",
-        name: product.name,
-        description: product.description,
-      });
+      const translated = await translateItalianInBrowser(product.name, product.description);
       if (!translated?.en || !translated?.es)
         throw new Error("Traduzioni incomplete.");
       setProductTranslations(translated);
@@ -788,11 +788,7 @@ export default function Admin() {
       const translated =
         translationSource === currentSource && productTranslations
           ? productTranslations
-          : await adminRequest("translate", {
-              sourceLanguage: "it",
-              name: product.name,
-              description: product.description,
-            });
+          : await translateItalianInBrowser(product.name, product.description);
       if (
         !translated?.en?.name ||
         !translated?.en?.description ||
@@ -1035,11 +1031,7 @@ export default function Admin() {
     setError("");
     setNotice("");
     try {
-      const translated = await adminRequest("translate", {
-        sourceLanguage: "it",
-        name: article.title,
-        description: article.body,
-      });
+      const translated = await translateItalianInBrowser(article.title, article.body);
       if (
         !translated?.en?.name ||
         !translated?.en?.description ||

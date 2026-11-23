@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   imageFrameStyle,
   parseImageFrame,
@@ -11,12 +11,15 @@ import {
   ArrowRight,
   ArrowDown,
   ArrowUp,
+  Bold,
   BookOpen,
   CheckCircle2,
   ExternalLink,
   FileText,
   FolderTree,
   Image as ImageIcon,
+  Italic,
+  Link2,
   HandHeart,
   Info,
   KeyRound,
@@ -32,7 +35,9 @@ import {
   Sparkles,
   Sprout,
   Trash2,
+  Underline,
 } from "lucide-react";
+import { isRichArticleHtml, legacyArticleToEditorHtml, plainArticleText, sanitizeArticleHtml } from "../lib/articleMarkup";
 
 type Product = {
   id: number;
@@ -285,6 +290,32 @@ function hasValidAdminSession() {
   return Number.isFinite(expiry) && expiry > Date.now();
 }
 
+async function translateRichArticleHtml(html: string, language: "en" | "es") {
+  const parsed = new DOMParser().parseFromString(sanitizeArticleHtml(html), "text/html");
+  const textNodes: Text[] = [];
+  const walker = parsed.createTreeWalker(parsed.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    if (node.textContent?.trim()) textNodes.push(node);
+  }
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(3, textNodes.length) }, async () => {
+    while (cursor < textNodes.length) {
+      const node = textNodes[cursor++];
+      const original = node.textContent ?? "";
+      const leading = original.match(/^\s*/)?.[0] ?? "";
+      const trailing = original.match(/\s*$/)?.[0] ?? "";
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(original.trim())}&langpair=it|${language}`);
+      const result = await response.json().catch(() => ({}));
+      const translated = result?.responseData?.translatedText;
+      if (!response.ok || typeof translated !== "string" || !translated.trim() || translated.includes("QUERY LENGTH LIMIT EXCEEDED")) throw new Error("Traduzione incompleta. Riprova tra poco.");
+      node.textContent = `${leading}${translated.trim()}${trailing}`;
+    }
+  });
+  await Promise.all(workers);
+  return sanitizeArticleHtml(parsed.body.innerHTML);
+}
+
 function AdminHeader({ onLogout }: { onLogout?: () => void }) {
   return (
     <header className="admin-header">
@@ -450,6 +481,57 @@ function ImageFrameEditor({
   );
 }
 
+function RichArticleEditor({ value, onChange, disabled }: { value: string; onChange: (html: string) => void; disabled: boolean }) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const selectionRef = useRef<Range | null>(null);
+  useEffect(() => {
+    if (editorRef.current) editorRef.current.innerHTML = sanitizeArticleHtml(value || "<p><br></p>");
+  }, []);
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (selection?.rangeCount && editorRef.current?.contains(selection.anchorNode)) selectionRef.current = selection.getRangeAt(0).cloneRange();
+  };
+  const run = (command: string, argument?: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    if (selectionRef.current) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(selectionRef.current);
+    }
+    document.execCommand(command, false, argument);
+    onChange(sanitizeArticleHtml(editor.innerHTML));
+  };
+  const insertLink = () => {
+    const entered = window.prompt("Inserisci un indirizzo HTTPS:", "https://");
+    if (!entered) return;
+    try {
+      const url = new URL(entered.trim());
+      if (url.protocol !== "https:") throw new Error("https");
+      run("createLink", url.href);
+    } catch {
+      window.alert("Inserisci un link valido che inizi con https://");
+    }
+  };
+  return <div className="article-editor">
+    <div className="article-editor__toolbar" aria-label="Strumenti di formattazione">
+      <button type="button" title="Titolo grande" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={() => run("formatBlock", "h2")}>H2</button>
+      <button type="button" title="Sottotitolo" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={() => run("formatBlock", "h3")}>H3</button>
+      <button type="button" title="Testo normale" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={() => run("formatBlock", "p")}>¶</button>
+      <button type="button" title="Grassetto" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={() => run("bold")}><Bold size={15} /></button>
+      <button type="button" title="Corsivo" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={() => run("italic")}><Italic size={15} /></button>
+      <button type="button" title="Sottolineato" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={() => run("underline")}><Underline size={15} /></button>
+      <select aria-label="Carattere" disabled={disabled} defaultValue="Georgia" onMouseDown={saveSelection} onChange={event => run("fontName", event.target.value)}><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Verdana">Verdana</option><option value="Times New Roman">Times New Roman</option></select>
+      <select aria-label="Dimensione del testo" disabled={disabled} defaultValue="3" onMouseDown={saveSelection} onChange={event => run("fontSize", event.target.value)}><option value="2">Piccolo</option><option value="3">Normale</option><option value="4">Grande</option><option value="5">Molto grande</option><option value="6">Titolo</option></select>
+      <label className="article-editor__color" title="Colore del testo" onMouseDown={saveSelection}>A<input aria-label="Colore del testo" type="color" disabled={disabled} defaultValue="#315b47" onChange={event => run("foreColor", event.target.value)} /></label>
+      <button type="button" title="Inserisci link" disabled={disabled} onMouseDown={event => { saveSelection(); event.preventDefault(); }} onClick={insertLink}><Link2 size={15} /><span>Insert link</span></button>
+    </div>
+    <div ref={editorRef} className="article-editor__surface" contentEditable={!disabled} role="textbox" aria-label="Testo dell'articolo in italiano" aria-multiline="true" suppressContentEditableWarning onInput={event => onChange(sanitizeArticleHtml(event.currentTarget.innerHTML))} />
+    <small>Scrivi in italiano. Il titolo e il testo saranno tradotti automaticamente in inglese e spagnolo.</small>
+  </div>;
+}
+
 export default function Admin() {
   const [location] = useLocation();
   const sectionPart = location.replace(/^\/admin\/?/, "").split("/")[0];
@@ -484,6 +566,7 @@ export default function Admin() {
   const [translationSource, setTranslationSource] = useState("");
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [editingArticle, setEditingArticle] = useState<number | null>(null);
+  const [articleEditorInstance, setArticleEditorInstance] = useState(0);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingPlant, setEditingPlant] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -1023,7 +1106,7 @@ export default function Admin() {
   };
 
   const saveArticle = async () => {
-    if (!article.title.trim() || !article.body.trim()) {
+    if (!article.title.trim() || !plainArticleText(article.body)) {
       setError("Titolo e testo dell'articolo sono obbligatori.");
       return;
     }
@@ -1035,7 +1118,10 @@ export default function Admin() {
     setError("");
     setNotice("");
     try {
-      const translated = await translateItalianInBrowser(article.title, article.body);
+      const richBody = isRichArticleHtml(article.body);
+      const translated = await translateItalianInBrowser(article.title, richBody ? article.title : article.body);
+      const bodyEn = richBody ? await translateRichArticleHtml(article.body, "en") : translated.en.description;
+      const bodyEs = richBody ? await translateRichArticleHtml(article.body, "es") : translated.es.description;
       if (
         !translated?.en?.name ||
         !translated?.en?.description ||
@@ -1046,11 +1132,11 @@ export default function Admin() {
       }
       const data = {
         titleIt: article.title.trim(),
-        bodyIt: article.body.trim(),
+        bodyIt: sanitizeArticleHtml(article.body.trim()),
         titleEn: translated?.en?.name || null,
-        bodyEn: translated?.en?.description || null,
+        bodyEn: bodyEn || null,
         titleEs: translated?.es?.name || null,
-        bodyEs: translated?.es?.description || null,
+        bodyEs: bodyEs || null,
         imageUrl: article.imageUrl.trim() || null,
         isPublished: editingArticle
           ? (articles.find(item => item.id === editingArticle)?.isPublished ??
@@ -1064,6 +1150,7 @@ export default function Admin() {
       await load();
       setArticle(blankArticle);
       setEditingArticle(null);
+      setArticleEditorInstance(instance => instance + 1);
       setNotice("Articolo salvato nella sezione Nutrition.");
     } catch (saveError) {
       if (saveError instanceof AdminRequestError && saveError.status === 401)
@@ -1083,7 +1170,7 @@ export default function Admin() {
     setEditingArticle(item.id);
     setArticle({
       title: item.titleIt,
-      body: item.bodyIt,
+      body: isRichArticleHtml(item.bodyIt) ? item.bodyIt : legacyArticleToEditorHtml(item.bodyIt),
       imageUrl: item.imageUrl || "",
     });
     setError("");
@@ -2572,23 +2659,10 @@ export default function Admin() {
                       placeholder="Es. Una cura più ampia"
                     />
                   </label>
-                  <label>
-                    Testo dell'articolo
-                    <textarea
-                      value={article.body}
-                      onChange={event =>
-                        setArticle({ ...article, body: event.target.value })
-                      }
-                      rows={8}
-                      placeholder="Scrivi una nota per la sezione Nutrition..."
-                    />
-                    <small className="admin-field-help">
-                      Formato: <code># Titolo</code>,{" "}
-                      <code>## Sottotitolo</code>, <code>**grassetto**</code>,{" "}
-                      <code>&gt; proposta in evidenza</code> e link HTTPS come{" "}
-                      <code>[Scrivimi su WhatsApp](https://wa.me/...)</code>.
-                    </small>
-                  </label>
+                  <div className="admin-rich-article-field">
+                    <span>Testo dell'articolo · italiano</span>
+                    <RichArticleEditor key={editingArticle ?? `new-${articleEditorInstance}`} value={article.body} onChange={body => setArticle(current => ({ ...current, body }))} disabled={busy} />
+                  </div>
                 </div>
                 <div className="admin-extra-grid admin-image-grid admin-image-fields">
                   <div className="admin-upload-label">
@@ -2650,6 +2724,7 @@ export default function Admin() {
                         onClick={() => {
                           setArticle(blankArticle);
                           setEditingArticle(null);
+                          setArticleEditorInstance(instance => instance + 1);
                         }}
                       >
                         Annulla

@@ -26,15 +26,15 @@ const supabasePublishableKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ
 const languageCopy: Record<Language, Record<string, string>> = {
   it: {
     home: "Home", catalog: "La collezione", eyebrow: "Journal Renacer", title: "Nutrizione & benessere", lead: "Appunti, pratiche e riflessioni per una cura che parte da dentro e si intreccia con la vita quotidiana.",
-    learn: "Leggi di più", back: "Tutti gli articoli", empty: "Gli articoli arriveranno presto.", loading: "Caricamento degli articoli…", missing: "Questo articolo non è disponibile.", notice: "Ogni percorso è personale: queste note hanno valore informativo e non sostituiscono il parere di un professionista sanitario.",
+    learn: "Leggi di più", back: "Tutti gli articoli", empty: "Gli articoli arriveranno presto.", loading: "Caricamento degli articoli…", missing: "Questo articolo non è disponibile.", notice: "Ogni percorso è personale: queste note hanno valore informativo e non sostituiscono il parere di un professionista sanitario.", askBarbara: "Hai una domanda su questo articolo?", whatsapp: "Chiedi a Barbara su WhatsApp", whatsappMessage: "Ciao Barbara, ho letto l'articolo «{title}» e vorrei chiederti maggiori informazioni.",
   },
   en: {
     home: "Home", catalog: "The collection", eyebrow: "Renacer Journal", title: "Nutrition & wellbeing", lead: "Notes, practices and reflections on care that begins within and meets everyday life.",
-    learn: "Learn more", back: "All articles", empty: "Articles will be here soon.", loading: "Loading articles…", missing: "This article is not available.", notice: "Every path is personal: these notes are for information and do not replace advice from a healthcare professional.",
+    learn: "Learn more", back: "All articles", empty: "Articles will be here soon.", loading: "Loading articles…", missing: "This article is not available.", notice: "Every path is personal: these notes are for information and do not replace advice from a healthcare professional.", askBarbara: "A question about this article?", whatsapp: "Ask Barbara on WhatsApp", whatsappMessage: "Hello Barbara, I read the article “{title}” and would love to ask you for more information.",
   },
   es: {
     home: "Inicio", catalog: "La colección", eyebrow: "Journal Renacer", title: "Nutrición y bienestar", lead: "Notas, prácticas y reflexiones para un cuidado que empieza dentro y se entrelaza con la vida cotidiana.",
-    learn: "Leer más", back: "Todos los artículos", empty: "Pronto encontrarás artículos aquí.", loading: "Cargando artículos…", missing: "Este artículo no está disponible.", notice: "Cada camino es personal: estas notas son informativas y no sustituyen el consejo de un profesional sanitario.",
+    learn: "Leer más", back: "Todos los artículos", empty: "Pronto encontrarás artículos aquí.", loading: "Cargando artículos…", missing: "Este artículo no está disponible.", notice: "Cada camino es personal: estas notas son informativas y no sustituyen el consejo de un profesional sanitario.", askBarbara: "¿Tienes alguna pregunta sobre este artículo?", whatsapp: "Pregunta a Barbara por WhatsApp", whatsappMessage: "Hola Barbara, he leído el artículo «{title}» y quisiera pedirte más información.",
   },
 };
 
@@ -51,6 +51,11 @@ function titleFor(article: Article, language: Language) {
 
 function bodyFor(article: Article, language: Language) {
   return (language === "en" ? article.bodyEn : language === "es" ? article.bodyEs : article.bodyIt)?.trim() || article.bodyIt;
+}
+
+function articleWhatsappHref(article: Article, language: Language) {
+  const message = languageCopy[language].whatsappMessage.replace("{title}", titleFor(article, language));
+  return `https://wa.me/34646072140?text=${encodeURIComponent(message)}`;
 }
 
 export default function Nutrition() {
@@ -136,7 +141,7 @@ export default function Nutrition() {
           <article className="nutrition-detail">
             <a className="journal-card__link nutrition-detail__back" href="/nutrition"><ArrowLeft size={15} /> {text.back}</a>
             {article.imageUrl ? <div className="nutrition-detail__image"><img src={article.imageUrl} alt={titleFor(article, language)} style={imageFrameStyle(article.imageUrl)} /></div> : null}
-            <div className="nutrition-detail__content"><span className="section-eyebrow"><BookOpen size={14} /> {text.eyebrow}</span><h1>{titleFor(article, language)}</h1><div className="nutrition-detail__body">{renderArticleMarkup(bodyFor(article, language))}</div><ShareBar title={titleFor(article, language)} path={`/nutrition/${encodeURIComponent(article.slug)}`} language={language}/><p className="nutrition-disclaimer">{text.notice}</p></div>
+            <div className="nutrition-detail__content"><span className="section-eyebrow"><BookOpen size={14} /> {text.eyebrow}</span><h1>{titleFor(article, language)}</h1><div className="nutrition-detail__body">{renderArticleMarkup(bodyFor(article, language))}</div><a className="article-whatsapp" href={articleWhatsappHref(article, language)} target="_blank" rel="noopener noreferrer"><span className="article-whatsapp__mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3.2A12.6 12.6 0 0 0 5.2 22.3L3.5 28.8l6.7-1.7A12.6 12.6 0 1 0 16 3.2Zm0 22.9a10.2 10.2 0 0 1-5.2-1.4l-.4-.2-3.9 1 1-3.8-.2-.4A10.2 10.2 0 1 1 16 26.1Zm5.6-7.7c-.3-.2-1.8-.9-2.1-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7.1a8.2 8.2 0 0 1-2.4-1.5 9 9 0 0 1-1.7-2.1c-.2-.3 0-.5.1-.7l.5-.5.3-.6c.1-.2 0-.4 0-.6l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.2-1.2 2.8 1.2 3.2 1.4 3.5a14.2 14.2 0 0 0 5.5 4.9c.8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.7-.1 1.8-.8 2.1-1.5s.3-1.3.2-1.5-.3-.3-.6-.5Z" /></svg></span><span><small>{text.askBarbara}</small><strong>{text.whatsapp}</strong></span><ArrowRight size={18} /></a><ShareBar title={titleFor(article, language)} path={`/nutrition/${encodeURIComponent(article.slug)}`} language={language}/><p className="nutrition-disclaimer">{text.notice}</p></div>
           </article>
         )}
       </main>

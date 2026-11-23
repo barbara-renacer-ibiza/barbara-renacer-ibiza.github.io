@@ -78,3 +78,7 @@
 - [ ] Nutrition articles support Italian-authored headings, bold text, highlighted callouts and safe links; the same formatting renders correctly in Italian, English and Spanish without unsanitized HTML.
 - [ ] Prepare and deliver a transparent Facebook-ready Renacer logo export while preserving the current homepage image/logo placement.
 - [ ] Apply the additive ordering migration, deploy the Edge Function, pass `pnpm check`, `pnpm build:static`, and `git diff --check`, then verify the public/admin behavior and Pages deployment before claiming completion.
+
+## Translation synchronization (2026-11-23)
+- [x] ضمان تطابق محتوى المنتجات والمقالات: الإيطالية هي المصدر الوحيد، وEN/ES يعاد توليدهما تلقائيًا عند كل حفظ.
+- [x] تحديد حد النص الإيطالي للمنتجات والمقالات بـ 15,000 حرف مع رفض الحفظ الصامت عند فشل الترجمة.

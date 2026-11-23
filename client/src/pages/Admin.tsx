@@ -148,6 +148,7 @@ const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
 const supabaseKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnF2bnRobWZlYXR3ZnB5c3J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3Nzk3MTAsImV4cCI6MjExMDM1NTcxMH0.9HxrdAIQxWQ3PtWAuICpXfNjMfR4chgAmlY9cYyxB38";
 const adminFunctionUrl = `${supabaseUrl}/functions/v1/renacer-admin`;
+const MAX_SOURCE_TEXT_LENGTH = 15_000;
 const blankProduct: ProductForm = {
   name: "",
   description: "",
@@ -770,9 +771,9 @@ export default function Admin() {
       setError("Nome e descrizione in italiano sono obbligatori.");
       return;
     }
-    if (product.description.length > 15000 || product.INCI.length > 15000) {
+    if (product.description.length > MAX_SOURCE_TEXT_LENGTH || product.INCI.length > MAX_SOURCE_TEXT_LENGTH) {
       setError(
-        "Descrizione e INCI non possono superare 15.000 caratteri ciascuno."
+        `Descrizione e INCI non possono superare ${MAX_SOURCE_TEXT_LENGTH.toLocaleString("it-IT")} caratteri ciascuno.`
       );
       return;
     }
@@ -1026,6 +1027,10 @@ export default function Admin() {
       setError("Titolo e testo dell'articolo sono obbligatori.");
       return;
     }
+    if (article.body.length > MAX_SOURCE_TEXT_LENGTH) {
+      setError(`Il testo italiano non può superare ${MAX_SOURCE_TEXT_LENGTH.toLocaleString("it-IT")} caratteri.`);
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
@@ -1034,9 +1039,7 @@ export default function Admin() {
         sourceLanguage: "it",
         name: article.title,
         description: article.body,
-      }).catch(() =>
-        translateArticleInBrowser(article.title.trim(), article.body.trim())
-      );
+      });
       if (
         !translated?.en?.name ||
         !translated?.en?.description ||

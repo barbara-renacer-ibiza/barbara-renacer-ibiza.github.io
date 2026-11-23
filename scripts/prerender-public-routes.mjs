@@ -58,12 +58,12 @@ function pageHtml({ route, title, description, type = 'website', image = `${orig
 }
 
 const routes = [];
-async function writeRoute(route, metadata) {
+async function writeRoute(route, metadata, includeInSitemap = true) {
   const clean = route.replace(/^\//, '');
   const destination = path.join(publicDir, clean, 'index.html');
   await fs.mkdir(path.dirname(destination), { recursive: true });
   await fs.writeFile(destination, pageHtml({ route, ...metadata }), 'utf8');
-  routes.push(route);
+  if (includeInSitemap) routes.push(route);
 }
 const productName = (item) => text(first(item, 'nameIt', 'nameEn', 'nameEs', 'name')) || 'Renacer product';
 const productDesc = (item) => text(first(item, 'descriptionIt', 'descriptionEn', 'descriptionEs', 'description')) || 'Handcrafted botanical care made with care in Ibiza.';
@@ -76,6 +76,10 @@ await writeRoute('/catalogue', { title: 'Catalogue · Renacer Ibiza', descriptio
 await writeRoute('/artisans', { title: 'Artisans · Renacer Ibiza', description: 'Meet the approved artisan makers connected with Renacer in Ibiza.', body: `<p>Discover artisan makers and their work, connected by care, craft and a thoughtful relationship with natural materials.</p>${artisans.length ? `<ul>${artisans.map((a, i) => { const slug = itemSlug(a, slugify(first(a, 'artisanName')) || String(a.id || i)); return `<li><a href="/artisans/${encodeURIComponent(slug)}">${esc(text(first(a, 'artisanName')) || 'Renacer artisan')}</a> — ${esc(text(first(a, 'description')) || 'An approved artisan maker in the Renacer community.')}: ${esc(text(first(a, 'productName')))}</li>`; }).join('')}</ul>` : '<p>Artisan profiles will appear here when approved for publication.</p>'}` });
 await writeRoute('/nutrition', { title: 'Nutrition · Renacer Ibiza', description: 'Natural nutrition notes and articles from Renacer, connecting everyday nourishment with wellbeing.', body: `<p>Explore natural nutrition notes from Renacer: considered perspectives on everyday nourishment, wellbeing and caring for yourself from within.</p>${articles.length ? `<ul>${articles.map((a) => `<li><a href="/nutrition/${encodeURIComponent(itemSlug(a, String(a.id)))}">${esc(articleTitle(a))}</a> — ${esc(articleBody(a).slice(0, 240))}</li>`).join('')}</ul>` : '<p>Nutrition articles are being prepared and will be published here over time.</p>'}` });
 await writeRoute('/plants', { title: 'Plants and ingredients · Renacer Ibiza', description: 'Learn about the active botanical materials and ingredients used in Renacer care.', body: `<p>Meet the plants and raw materials that inspire Renacer: botanical ingredients chosen with care for handmade skincare and everyday rituals.</p>${plants.length ? `<ul>${plants.map((p) => { const name = text(first(p, 'nameIt', 'nameEn', 'nameEs', 'name', 'botanicalName')) || 'Botanical material'; const slug = itemSlug(p, slugify(name)); return `<li><a href="/plants/${encodeURIComponent(slug)}">${esc(name)}</a> — ${esc(text(first(p, 'descriptionIt', 'descriptionEn', 'descriptionEs', 'description')) || 'A botanical material explored for its role in thoughtful, plant-inspired care.')}</li>`; }).join('')}</ul>` : '<p>Plant profiles will appear here as active materials are added.</p>'}` });
+await writeRoute('/admin', { title: 'Gestione Renacer', description: 'Protected Renacer administration area.', body: '' }, false);
+for (const section of ['products', 'categories', 'plants', 'articles', 'artisans', 'settings']) {
+  await writeRoute(`/admin/${section}`, { title: 'Gestione Renacer', description: 'Protected Renacer administration area.', body: '' }, false);
+}
 
 for (const item of products) {
   const slug = productSlug(item), title = productName(item), description = productDesc(item), image = first(item, 'imageUrl', 'image_url');

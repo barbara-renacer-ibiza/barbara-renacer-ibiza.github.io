@@ -770,6 +770,12 @@ export default function Admin() {
       setError("Nome e descrizione in italiano sono obbligatori.");
       return;
     }
+    if (product.description.length > 15000 || product.INCI.length > 15000) {
+      setError(
+        "Descrizione e INCI non possono superare 15.000 caratteri ciascuno."
+      );
+      return;
+    }
     const categorySlug =
       product.categorySlug || activeCategories[0]?.slug || "altro";
     const chosenCategory = categories.find(item => item.slug === categorySlug);
@@ -1755,8 +1761,13 @@ export default function Admin() {
                         setTranslationSource("");
                       }}
                       rows={5}
+                      maxLength={15000}
                       placeholder="Racconta il prodotto con parole semplici..."
                     />
+                    <small>
+                      {product.description.length.toLocaleString("it-IT")} /
+                      15.000 caratteri
+                    </small>
                   </label>
                 </div>
                 <div className="admin-extra-grid admin-product-fields">
@@ -1810,12 +1821,17 @@ export default function Admin() {
                     INCI · ingredienti
                     <textarea
                       rows={5}
+                      maxLength={15000}
                       value={product.INCI}
                       onChange={event =>
                         setProduct({ ...product, INCI: event.target.value })
                       }
                       placeholder="Incolla la lista INCI verificata, senza tradurla…"
                     />
+                    <small>
+                      {product.INCI.length.toLocaleString("it-IT")} / 15.000
+                      caratteri
+                    </small>
                     <small>
                       Lascia vuoto se la composizione non è ancora stata
                       verificata.
@@ -1869,7 +1885,10 @@ export default function Admin() {
                       placeholder="Es. Ciao Barbara, vorrei saperne di più..."
                     />
                     <small className="admin-field-help">
-                      Il pulsante WhatsApp appare su questa scheda prodotto e apre una conversazione già riferita solo a questo prodotto. Se lasci vuoto, il sito prepara automaticamente il messaggio nella lingua scelta dal visitatore.
+                      Il pulsante WhatsApp appare su questa scheda prodotto e
+                      apre una conversazione già riferita solo a questo
+                      prodotto. Se lasci vuoto, il sito prepara automaticamente
+                      il messaggio nella lingua scelta dal visitatore.
                     </small>
                   </label>
                 </div>
@@ -2016,10 +2035,32 @@ export default function Admin() {
                           )}
                           {item.isPublished === 1 ? "Online" : "Bozza"}
                         </span>
-                        <div className="admin-product-order" aria-label={`Ordine di ${item.nameIt}`}>
-                          <button type="button" className="admin-order-button" disabled={statusUpdating !== null || index === 0} onClick={() => void moveProduct(item, "up")} aria-label={`Sposta ${item.nameIt} sopra`}><ArrowUp size={14} /></button>
+                        <div
+                          className="admin-product-order"
+                          aria-label={`Ordine di ${item.nameIt}`}
+                        >
+                          <button
+                            type="button"
+                            className="admin-order-button"
+                            disabled={statusUpdating !== null || index === 0}
+                            onClick={() => void moveProduct(item, "up")}
+                            aria-label={`Sposta ${item.nameIt} sopra`}
+                          >
+                            <ArrowUp size={14} />
+                          </button>
                           <span>{index + 1}</span>
-                          <button type="button" className="admin-order-button" disabled={statusUpdating !== null || index === products.length - 1} onClick={() => void moveProduct(item, "down")} aria-label={`Sposta ${item.nameIt} sotto`}><ArrowDown size={14} /></button>
+                          <button
+                            type="button"
+                            className="admin-order-button"
+                            disabled={
+                              statusUpdating !== null ||
+                              index === products.length - 1
+                            }
+                            onClick={() => void moveProduct(item, "down")}
+                            aria-label={`Sposta ${item.nameIt} sotto`}
+                          >
+                            <ArrowDown size={14} />
+                          </button>
                         </div>
                         <button
                           className="admin-publish-toggle"
@@ -2543,7 +2584,10 @@ export default function Admin() {
                       placeholder="Scrivi una nota per la sezione Nutrition..."
                     />
                     <small className="admin-field-help">
-                      Formato: <code># Titolo</code>, <code>## Sottotitolo</code>, <code>**grassetto**</code>, <code>&gt; proposta in evidenza</code> e link HTTPS come <code>[Scrivimi su WhatsApp](https://wa.me/...)</code>.
+                      Formato: <code># Titolo</code>,{" "}
+                      <code>## Sottotitolo</code>, <code>**grassetto**</code>,{" "}
+                      <code>&gt; proposta in evidenza</code> e link HTTPS come{" "}
+                      <code>[Scrivimi su WhatsApp](https://wa.me/...)</code>.
                     </small>
                   </label>
                 </div>

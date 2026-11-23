@@ -152,8 +152,7 @@ function writeResult(result: { ok: boolean; status: number; data: unknown }) {
   return json(result.data);
 }
 
-function splitForTranslation(text: string) {
-  const limit = 450;
+function splitForTranslation(text: string, limit = 200) {
   const chunks: string[] = [];
   for (const paragraph of text.split(/\n\s*\n/)) {
     const sentences = paragraph
@@ -190,19 +189,30 @@ async function translateText(name: string, description: string, safety = "") {
     if (!text.trim()) return "";
     const translatedChunks: string[] = [];
     for (const chunk of splitForTranslation(text)) {
-      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=it|${lang}`;
-      const response = await fetch(url);
-      if (!response.ok)
-        throw new Error("Servizio di traduzione non disponibile.");
-      const result = await response.json();
-      const translated = result?.responseData?.translatedText;
-      if (
-        typeof translated !== "string" ||
-        !translated.trim() ||
-        translated.includes("QUERY LENGTH LIMIT EXCEEDED")
-      )
-        throw new Error("Traduzione incompleta.");
-      translatedChunks.push(translated.trim());
+      const translateChunk = async (value: string): Promise<string[]> => {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(value)}&langpair=it|${lang}`;
+        const response = await fetch(url);
+        if (!response.ok)
+          throw new Error("Servizio di traduzione non disponibile.");
+        const result = await response.json();
+        const translated = result?.responseData?.translatedText;
+        const providerError = String(
+          result?.responseDetails || translated || ""
+        );
+        if (/QUERY LENGTH LIMIT EXCEEDED/i.test(providerError)) {
+          const points = Array.from(value);
+          if (points.length < 2) throw new Error("Traduzione incompleta.");
+          const middle = Math.ceil(points.length / 2);
+          return [
+            ...(await translateChunk(points.slice(0, middle).join(""))),
+            ...(await translateChunk(points.slice(middle).join(""))),
+          ];
+        }
+        if (typeof translated !== "string" || !translated.trim())
+          throw new Error("Traduzione incompleta.");
+        return [translated.trim()];
+      };
+      translatedChunks.push(...(await translateChunk(chunk)));
     }
     return translatedChunks.join("\n\n");
   };
@@ -517,7 +527,9 @@ Deno.serve(async (req: Request) => {
         settings,
         submissions,
       ] = await Promise.all([
-        db("products?select=*&order=sortOrder.asc,createdAt.asc,id.asc&limit=500"),
+        db(
+          "products?select=*&order=sortOrder.asc,createdAt.asc,id.asc&limit=500"
+        ),
         db("nutrition_articles?select=*&order=createdAt.desc&limit=500"),
         db("categories?select=*&order=nameIt.asc&limit=500"),
         db("plant_materials?select=*&order=nameIt.asc&limit=1000"),
@@ -962,19 +974,36 @@ Deno.serve(async (req: Request) => {
           },
           400
         );
-      if (translatedFields.some(value => value.includes("QUERY LENGTH LIMIT EXCEEDED")))
+      if (
+        translatedFields.some(value =>
+          /QUERY LENGTH LIMIT EXCEEDED/i.test(value)
+        )
+      )
         return json(
           {
             error:
-              "Il servizio di traduzione ha restituito un errore: nessuna modifica è stata salvata.",
+              "Traduzione incompleta: nessuna modifica è stata salvata. Riprova la traduzione.",
+          },
+          400
+        );
+      const descriptionFields = [
+        p.descriptionIt,
+        p.descriptionEn,
+        p.descriptionEs,
+      ].map(value => String(value || ""));
+      if (descriptionFields.some(value => value.length > 15000))
+        return json(
+          {
+            error:
+              "La descrizione del prodotto non può superare 15.000 caratteri.",
           },
           400
         );
       const categorySlug = await resolveCategorySlug(p);
       const inci = p.INCI == null ? null : String(p.INCI).trim();
-      if (inci && inci.length > 20000)
+      if (inci && inci.length > 15000)
         return json(
-          { error: "Il testo INCI supera la lunghezza massima consentita." },
+          { error: "Il testo INCI non può superare 15.000 caratteri." },
           400
         );
       let nextSortOrder = Number(p.sortOrder);
@@ -1252,12 +1281,17 @@ Deno.serve(async (req: Request) => {
 
     if (action === "article_create" || action === "article_update") {
       const a = body.article || {};
-      const articleTranslations = [a.titleEn, a.bodyEn, a.titleEs, a.bodyEs].map(
-        value => String(value || "").trim()
-      );
+      const articleTranslations = [
+        a.titleEn,
+        a.bodyEn,
+        a.titleEs,
+        a.bodyEs,
+      ].map(value => String(value || "").trim());
       if (
         articleTranslations.some(value => !value) ||
-        articleTranslations.some(value => value.includes("QUERY LENGTH LIMIT EXCEEDED"))
+        articleTranslations.some(value =>
+          value.includes("QUERY LENGTH LIMIT EXCEEDED")
+        )
       )
         return json(
           {

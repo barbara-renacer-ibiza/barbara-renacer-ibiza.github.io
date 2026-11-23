@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight, Leaf, MessageCircle, PackageOpen } from "lucid
 import ShareBar from "@/components/ShareBar";
 
 type Lang = "it" | "en" | "es";
-type Product = { id: number; slug: string; nameIt: string; descriptionIt: string; nameEn: string | null; descriptionEn: string | null; nameEs: string | null; descriptionEs: string | null; category: string; categorySlug: string; imageUrl: string | null; priceCents: number; currency: string; INCI: string | null };
+type Product = { id: number; slug: string; nameIt: string; descriptionIt: string; nameEn: string | null; descriptionEn: string | null; nameEs: string | null; descriptionEs: string | null; category: string; categorySlug: string; imageUrl: string | null; priceCents: number; currency: string; INCI: string | null; sortOrder: number };
 type Category = { slug: string; nameIt: string; nameEn: string | null; nameEs: string | null };
 type Plant = { slug: string; nameIt: string; nameEn: string | null; nameEs: string | null };
 type Relation = { productId: number; plantSlug: string };
@@ -37,7 +37,7 @@ export default function Catalogue() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch(`${api}/rest/v1/products?select=id,slug,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,category,categorySlug,imageUrl,priceCents,currency,INCI&isPublished=eq.1&order=createdAt.desc`, { headers }).then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<Product[]>; }),
+      fetch(`${api}/rest/v1/products?select=id,slug,nameIt,descriptionIt,nameEn,descriptionEn,nameEs,descriptionEs,category,categorySlug,imageUrl,priceCents,currency,INCI,sortOrder&isPublished=eq.1&order=sortOrder.asc,createdAt.asc,id.asc`, { headers }).then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<Product[]>; }),
       fetch(`${api}/rest/v1/categories?select=slug,nameIt,nameEn,nameEs&isActive=eq.true&order=nameIt.asc`, { headers }).then(r => r.ok ? r.json() : [] as Category[]),
       fetch(`${api}/rest/v1/plant_materials?select=slug,nameIt,nameEn,nameEs&isActive=eq.true&order=nameIt.asc`, { headers }).then(r => r.ok ? r.json() : [] as Plant[]),
       fetch(`${api}/rest/v1/product_plant_materials?select=productId,plantSlug&order=plantSlug.asc`, { headers }).then(r => r.ok ? r.json() : [] as Relation[]),

@@ -21,6 +21,7 @@ import {
   Sprout,
   X,
 } from "lucide-react";
+import { articleExcerpt } from "../lib/articleMarkup";
 
 const whatsappLink = "https://wa.me/34646072140";
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
@@ -157,11 +158,6 @@ function articleTitleFor(article: NutritionArticleView, language: Language) {
 
 function articleBodyFor(article: NutritionArticleView, language: Language) {
   return (language === "en" ? article.bodyEn : language === "es" ? article.bodyEs : article.bodyIt)?.trim() || article.bodyIt;
-}
-
-function articleExcerpt(body: string, wordCount = 36) {
-  const words = body.replace(/\s+/g, " ").trim().split(" ");
-  return words.length > wordCount ? `${words.slice(0, wordCount).join(" ")}…` : words.join(" ");
 }
 
 export default function Home() {

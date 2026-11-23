@@ -517,7 +517,7 @@ Deno.serve(async (req: Request) => {
         settings,
         submissions,
       ] = await Promise.all([
-        db("products?select=*&order=createdAt.desc&limit=500"),
+        db("products?select=*&order=sortOrder.asc,createdAt.asc,id.asc&limit=500"),
         db("nutrition_articles?select=*&order=createdAt.desc&limit=500"),
         db("categories?select=*&order=nameIt.asc&limit=500"),
         db("plant_materials?select=*&order=nameIt.asc&limit=1000"),
@@ -948,6 +948,28 @@ Deno.serve(async (req: Request) => {
 
     if (action === "create" || action === "update") {
       const p = body.product || {};
+      const translatedFields = [
+        p.nameEn,
+        p.descriptionEn,
+        p.nameEs,
+        p.descriptionEs,
+      ].map(value => String(value || "").trim());
+      if (translatedFields.some(value => !value))
+        return json(
+          {
+            error:
+              "Traduzioni incomplete: nessuna modifica è stata salvata. Riprova la traduzione.",
+          },
+          400
+        );
+      if (translatedFields.some(value => value.includes("QUERY LENGTH LIMIT EXCEEDED")))
+        return json(
+          {
+            error:
+              "Il servizio di traduzione ha restituito un errore: nessuna modifica è stata salvata.",
+          },
+          400
+        );
       const categorySlug = await resolveCategorySlug(p);
       const inci = p.INCI == null ? null : String(p.INCI).trim();
       if (inci && inci.length > 20000)
@@ -955,6 +977,15 @@ Deno.serve(async (req: Request) => {
           { error: "Il testo INCI supera la lunghezza massima consentita." },
           400
         );
+      let nextSortOrder = Number(p.sortOrder);
+      if (action === "create" && !Number.isFinite(nextSortOrder)) {
+        const latest = await db(
+          "products?select=sortOrder&order=sortOrder.desc&limit=1"
+        );
+        if (!latest.ok) return writeResult(latest);
+        const latestRow = Array.isArray(latest.data) ? latest.data[0] : null;
+        nextSortOrder = Number(latestRow?.sortOrder ?? -1) + 1;
+      }
       const data = {
         sourceLanguage: "it",
         nameIt: p.nameIt,
@@ -971,6 +1002,9 @@ Deno.serve(async (req: Request) => {
         category: p.categoryName || p.category || categorySlug,
         categorySlug,
         isPublished: p.isPublished ?? 1,
+        ...(action === "create" || Number.isFinite(nextSortOrder)
+          ? { sortOrder: nextSortOrder }
+          : {}),
       };
       const result =
         action === "create"
@@ -1004,6 +1038,51 @@ Deno.serve(async (req: Request) => {
           );
       }
       return json(savedRow);
+    }
+
+    if (action === "product_reorder") {
+      const id = Number(body.id);
+      const neighbourId = Number(body.neighbourId);
+      if (
+        !Number.isInteger(id) ||
+        !Number.isInteger(neighbourId) ||
+        id === neighbourId
+      )
+        return json({ error: "Ordine prodotto non valido." }, 400);
+      const rows = await db(
+        `products?select=id,sortOrder&id=in.(${id},${neighbourId})&limit=2`
+      );
+      if (!rows.ok) return writeResult(rows);
+      if (!Array.isArray(rows.data) || rows.data.length !== 2)
+        return json(
+          { error: "Uno dei prodotti da riordinare non esiste più." },
+          404
+        );
+      const first = rows.data.find(
+        (row: Record<string, unknown>) => Number(row.id) === id
+      );
+      const second = rows.data.find(
+        (row: Record<string, unknown>) => Number(row.id) === neighbourId
+      );
+      const firstOrder = Number(first?.sortOrder);
+      const secondOrder = Number(second?.sortOrder);
+      if (!Number.isFinite(firstOrder) || !Number.isFinite(secondOrder))
+        return json({ error: "Ordine prodotto non inizializzato." }, 409);
+      const updates = await Promise.all([
+        db(`products?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ sortOrder: secondOrder }),
+        }),
+        db(`products?id=eq.${neighbourId}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ sortOrder: firstOrder }),
+        }),
+      ]);
+      const failedUpdate = updates.find(result => !result.ok);
+      if (failedUpdate) return writeResult(failedUpdate);
+      return json({ ok: true });
     }
 
     if (action === "material_create") {
@@ -1173,6 +1252,20 @@ Deno.serve(async (req: Request) => {
 
     if (action === "article_create" || action === "article_update") {
       const a = body.article || {};
+      const articleTranslations = [a.titleEn, a.bodyEn, a.titleEs, a.bodyEs].map(
+        value => String(value || "").trim()
+      );
+      if (
+        articleTranslations.some(value => !value) ||
+        articleTranslations.some(value => value.includes("QUERY LENGTH LIMIT EXCEEDED"))
+      )
+        return json(
+          {
+            error:
+              "Traduzioni incomplete: nessuna modifica è stata salvata. Riprova.",
+          },
+          400
+        );
       const data: Record<string, unknown> = {
         titleIt: a.titleIt,
         bodyIt: a.bodyIt,

@@ -21,7 +21,7 @@ type PlantMaterial = {
   sourceUrl: string | null;
   imageUrl: string | null;
 };
-type Product = { id: number; slug: string; nameIt: string; nameEn: string | null; nameEs: string | null };
+type Product = { id: number; slug: string; nameIt: string; nameEn: string | null; nameEs: string | null; sortOrder: number };
 type ProductMaterial = { productId: number; plantSlug: string };
 
 const supabaseUrl = "https://dybqvnthmfeatwfpysrv.supabase.co";
@@ -84,7 +84,7 @@ export default function Plants() {
         if (!response.ok) throw new Error("materials");
         return response.json() as Promise<PlantMaterial[]>;
       }),
-      fetch(`${supabaseUrl}/rest/v1/products?select=id,slug,nameIt,nameEn,nameEs&isPublished=eq.1&order=createdAt.desc`, { headers }).then((response) => {
+      fetch(`${supabaseUrl}/rest/v1/products?select=id,slug,nameIt,nameEn,nameEs,sortOrder&isPublished=eq.1&order=sortOrder.asc,createdAt.asc,id.asc`, { headers }).then((response) => {
         if (!response.ok) throw new Error("products");
         return response.json() as Promise<Product[]>;
       }),

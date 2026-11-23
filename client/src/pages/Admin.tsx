@@ -9,6 +9,8 @@ import { Link, useLocation } from "wouter";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowDown,
+  ArrowUp,
   BookOpen,
   CheckCircle2,
   ExternalLink,
@@ -49,6 +51,7 @@ type Product = {
   INCI: string | null;
   plantSlugs: string[];
   isPublished: number;
+  sortOrder: number;
 };
 type Article = {
   id: number;
@@ -782,7 +785,16 @@ export default function Admin() {
               sourceLanguage: "it",
               name: product.name,
               description: product.description,
-            }).catch(() => null);
+            });
+      if (
+        !translated?.en?.name ||
+        !translated?.en?.description ||
+        !translated?.es?.name ||
+        !translated?.es?.description
+      )
+        throw new Error(
+          "Traduzioni automatiche incomplete: il prodotto non è stato modificato. Riprova."
+        );
       const data = {
         sourceLanguage: "it",
         nameIt: product.name.trim(),
@@ -850,6 +862,34 @@ export default function Admin() {
     });
     setError("");
     setNotice("");
+  };
+
+  const moveProduct = async (item: Product, direction: "up" | "down") => {
+    const index = products.findIndex(productItem => productItem.id === item.id);
+    const neighbour = products[index + (direction === "up" ? -1 : 1)];
+    if (!neighbour) return;
+    setStatusUpdating(`product-order:${item.id}`);
+    setError("");
+    setNotice("");
+    try {
+      await adminRequest("product_reorder", {
+        id: item.id,
+        neighbourId: neighbour.id,
+      });
+      await load();
+      setNotice("Ordine dei prodotti aggiornato.");
+    } catch (moveError) {
+      if (moveError instanceof AdminRequestError && moveError.status === 401)
+        logout(true);
+      else
+        setError(
+          moveError instanceof Error
+            ? moveError.message
+            : "Ordine dei prodotti non aggiornato."
+        );
+    } finally {
+      setStatusUpdating(null);
+    }
   };
 
   const savePlant = async () => {
@@ -1828,6 +1868,9 @@ export default function Admin() {
                       }
                       placeholder="Es. Ciao Barbara, vorrei saperne di più..."
                     />
+                    <small className="admin-field-help">
+                      Il pulsante WhatsApp appare su questa scheda prodotto e apre una conversazione già riferita solo a questo prodotto. Se lasci vuoto, il sito prepara automaticamente il messaggio nella lingua scelta dal visitatore.
+                    </small>
                   </label>
                 </div>
                 <div className="admin-extra-grid admin-image-grid admin-image-fields">
@@ -1937,7 +1980,7 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div className="admin-products-list">
-                    {products.map(item => (
+                    {products.map((item, index) => (
                       <div className="admin-product-row" key={item.id}>
                         <div className="admin-product-row__identity">
                           {item.imageUrl ? (
@@ -1973,6 +2016,11 @@ export default function Admin() {
                           )}
                           {item.isPublished === 1 ? "Online" : "Bozza"}
                         </span>
+                        <div className="admin-product-order" aria-label={`Ordine di ${item.nameIt}`}>
+                          <button type="button" className="admin-order-button" disabled={statusUpdating !== null || index === 0} onClick={() => void moveProduct(item, "up")} aria-label={`Sposta ${item.nameIt} sopra`}><ArrowUp size={14} /></button>
+                          <span>{index + 1}</span>
+                          <button type="button" className="admin-order-button" disabled={statusUpdating !== null || index === products.length - 1} onClick={() => void moveProduct(item, "down")} aria-label={`Sposta ${item.nameIt} sotto`}><ArrowDown size={14} /></button>
+                        </div>
                         <button
                           className="admin-publish-toggle"
                           type="button"
@@ -2494,6 +2542,9 @@ export default function Admin() {
                       rows={8}
                       placeholder="Scrivi una nota per la sezione Nutrition..."
                     />
+                    <small className="admin-field-help">
+                      Formato: <code># Titolo</code>, <code>## Sottotitolo</code>, <code>**grassetto**</code>, <code>&gt; proposta in evidenza</code> e link HTTPS come <code>[Scrivimi su WhatsApp](https://wa.me/...)</code>.
+                    </small>
                   </label>
                 </div>
                 <div className="admin-extra-grid admin-image-grid admin-image-fields">

@@ -68,3 +68,13 @@
 - [x] Validate the implementation with `pnpm check`, `pnpm build:static` and `git diff --check`; existing Vite warnings remain non-blocking.
 - [ ] Push the finished changes to `origin/main`, wait for GitHub Pages deployment, then verify the published homepage and `/admin` framing controls.
 - [x] إصلاح لوحة صورة قسم التغذية في الصفحة الرئيسية باستخدام صورة التغذية داخل إطار ثابت ومتجاوب، مع إبقاء الشعار واضحًا.
+
+
+## Client feedback — reliable products, ordering, WhatsApp and Nutrition formatting (2026-11-23)
+- [ ] Product Italian edits regenerate complete English and Spanish name/description translations; translation failure blocks the save and never writes null or provider error text over existing translations.
+- [ ] Existing products remain present, preserve publication state/images/categories/plant links, and the admin reloads the saved row so an edited cream cannot appear to disappear because of stale state.
+- [ ] Add protected manual product ordering with move-up/move-down controls; Home and Catalogue use the same deterministic manual order with creation/id fallback.
+- [ ] Keep individual product-specific WhatsApp buttons on cards and details, and explain in admin that each button opens a prefilled message for that product; add an article-level detox consultation WhatsApp CTA that is safe and configurable.
+- [ ] Nutrition articles support Italian-authored headings, bold text, highlighted callouts and safe links; the same formatting renders correctly in Italian, English and Spanish without unsanitized HTML.
+- [ ] Prepare and deliver a transparent Facebook-ready Renacer logo export while preserving the current homepage image/logo placement.
+- [ ] Apply the additive ordering migration, deploy the Edge Function, pass `pnpm check`, `pnpm build:static`, and `git diff --check`, then verify the public/admin behavior and Pages deployment before claiming completion.

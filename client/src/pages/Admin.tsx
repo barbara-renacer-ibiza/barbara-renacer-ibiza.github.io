@@ -105,6 +105,7 @@ type ProductForm = {
   whatsappMessage: string;
   INCI: string;
   plantSlugs: string[];
+  sortOrder: string;
 };
 type ProductTranslations = {
   en: { name: string; description: string };
@@ -158,6 +159,7 @@ const blankProduct: ProductForm = {
   whatsappMessage: "",
   INCI: "",
   plantSlugs: [],
+  sortOrder: "0",
 };
 const blankArticle: ArticleForm = { title: "", body: "", imageUrl: "" };
 const blankCategory: CategoryForm = {
@@ -816,6 +818,7 @@ export default function Admin() {
         whatsappMessage: product.whatsappMessage.trim() || null,
         INCI: product.INCI.trim() || null,
         plantSlugs: product.plantSlugs,
+        sortOrder: editingProduct || Number(product.sortOrder) > 0 ? Math.max(0, Math.floor(Number(product.sortOrder) || 0)) : products.length ? Math.max(...products.map(item => item.sortOrder ?? 0)) + 1 : 0,
         isPublished: editingProduct
           ? (products.find(item => item.id === editingProduct)?.isPublished ??
             0)
@@ -857,6 +860,7 @@ export default function Admin() {
       name: item.nameIt,
       description: item.descriptionIt,
       price: (item.priceCents / 100).toFixed(2),
+      sortOrder: String(item.sortOrder ?? 0),
       categorySlug: matchingCategory?.slug || item.categorySlug || "altro",
       imageUrl: item.imageUrl || "",
       whatsappMessage: item.whatsappMessage || "",

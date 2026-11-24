@@ -454,10 +454,12 @@ function ImageFrameEditor({
   value,
   onChange,
   label,
+  aspectRatio = "1 / 1",
 }: {
   value: string;
   onChange: (value: string) => void;
   label: string;
+  aspectRatio?: string;
 }) {
   const frame = parseImageFrame(value);
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; frame: ImageFrame } | null>(null);
@@ -490,6 +492,7 @@ function ImageFrameEditor({
       <div
         className={`admin-frame-preview${value ? " is-draggable" : ""}`}
         aria-label={`Anteprima ${label}`}
+        style={{ aspectRatio }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={stopDragging}
@@ -510,7 +513,7 @@ function ImageFrameEditor({
       </div>
       {value ? (
         <div className="admin-frame-controls">
-          <small className="admin-frame-hint">Trascina la foto: l’anteprima si aggiorna subito. Salva il prodotto per pubblicare il taglio.</small>
+          <small className="admin-frame-hint">Trascina la foto nell’anteprima per spostarla; zoom e ritaglio si aggiornano subito come nella scheda prodotto.</small>
           <label>
             Orizzontale{" "}
             <input
@@ -534,10 +537,10 @@ function ImageFrameEditor({
             />
           </label>
           <label>
-            Zoom{" "}
+            Zoom ({Math.round(frame.scale * 100)}%){" "}
             <input
               type="range"
-              min="1"
+              min="0.5"
               max="4"
               step="0.05"
               value={frame.scale}
@@ -546,29 +549,24 @@ function ImageFrameEditor({
           </label>
           <div className="admin-frame-fit-actions">
             <button
-              className="admin-frame-fit admin-frame-fit--fill"
-              type="button"
-              onClick={() => onChange(fitImageFrame(value, "fill"))}
-            >
-              Adatta tutta la foto
-            </button>
-            <button
-              className="admin-frame-fit"
-              type="button"
-              onClick={() => onChange(fitImageFrame(value, "cover"))}
-            >
-              Riempi riquadro (ritaglio)
-            </button>
-            <button
-              className="admin-frame-fit"
+              className={`admin-frame-fit${frame.fit === "contain" ? " is-active" : ""}`}
+              aria-pressed={frame.fit === "contain"}
               type="button"
               onClick={() => onChange(fitImageFrame(value, "contain"))}
             >
-              Mostra foto intera
+              Foto intera (consigliato)
+            </button>
+            <button
+              className={`admin-frame-fit${frame.fit === "cover" ? " is-active" : ""}`}
+              aria-pressed={frame.fit === "cover"}
+              type="button"
+              onClick={() => onChange(fitImageFrame(value, "cover"))}
+            >
+              Riempi cornice (ritaglio)
             </button>
           </div>
           <small className="admin-frame-fit-note">
-            Adatta tutta la foto non ritaglia ma può deformarne leggermente le proporzioni; Riempi riquadro può tagliare i lati, mentre Mostra foto intera può lasciare margini.
+            Foto intera mantiene le proporzioni e non taglia. Riempi cornice ritaglia i bordi senza deformare; possono restare margini in base alla forma della foto.
           </small>
           <button
             className="admin-frame-reset"
@@ -2148,6 +2146,7 @@ export default function Admin() {
                     value={product.imageUrl}
                     onChange={imageUrl => setProduct({ ...product, imageUrl })}
                     label="immagine prodotto"
+                    aspectRatio="var(--product-image-frame-ratio)"
                   />
                 </div>
                 <div className="admin-card__bottom">

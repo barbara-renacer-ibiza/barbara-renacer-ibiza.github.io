@@ -86,3 +86,7 @@
 ## Independent product and article sharing (2026-11-24)
 - [x] لكل منتج ولكل مقالة صفحة مستقلة قابلة للمشاركة عبر أزرار بأيقونات WhatsApp وFacebook وInstagram.
 - [x] Instagram يستعمل Web Share على الهاتف، مع نسخ الرابط تلقائيًا كحل احتياطي على المتصفح.
+
+## Client feedback — safe product image framing (2026-11-24)
+- [ ] In Admin, preview product photos in the same 1.05:1 frame used by the public catalogue and product detail; default to the complete undistorted photo, keep cropping optional and non-distorting, allow direct drag positioning, and zoom from 50% to 400%. Read older saved frame links without stretching photos.
+- [ ] Keep production product records unchanged; pass project checks, publish to `origin/main`, wait for GitHub Pages, then test the live oil-bottle editor and matching public frame in the browser without saving product changes.

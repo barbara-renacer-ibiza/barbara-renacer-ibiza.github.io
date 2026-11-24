@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultImageFrame, fitImageFrame, moveImageFrame, parseImageFrame, withImageFrame } from "./imageFrame";
+import { defaultImageFrame, fitImageFrame, imageFrameStyle, moveImageFrame, parseImageFrame, withImageFrame } from "./imageFrame";
 
 describe("image frame editor", () => {
   it("pans opposite the pointer delta so the photo follows the drag", () => {
@@ -7,7 +7,7 @@ describe("image frame editor", () => {
       x: 25,
       y: 75,
       scale: 1,
-      fit: "fill",
+      fit: "contain",
     });
   });
 
@@ -16,7 +16,7 @@ describe("image frame editor", () => {
       x: 100,
       y: 0,
       scale: 2,
-      fit: "fill",
+      fit: "contain",
     });
   });
 
@@ -24,7 +24,16 @@ describe("image frame editor", () => {
     expect(moveImageFrame(defaultImageFrame, 10, 10, 0, 0)).toBe(defaultImageFrame);
   });
 
-  it("supports the expanded zoom limit in saved and parsed frame URLs", () => {
+  it("supports zooming out below 100% and clamps it to 50%", () => {
+    const url = withImageFrame("https://example.test/oil.jpg", {
+      ...defaultImageFrame,
+      scale: 0.35,
+    });
+    expect(url).toBe("https://example.test/oil.jpg#frame=50,50,0.5");
+    expect(parseImageFrame(url).scale).toBe(0.5);
+  });
+
+  it("keeps the expanded zoom limit in saved and parsed frame URLs", () => {
     const url = withImageFrame("https://example.test/oil.jpg", {
       ...defaultImageFrame,
       scale: 5,
@@ -33,18 +42,19 @@ describe("image frame editor", () => {
     expect(parseImageFrame(url).scale).toBe(4);
   });
 
-  it("auto-fills or shows the whole photo in one click while centering it", () => {
-    const source = "https://example.test/oil.jpg#frame=18,73,2.25,contain";
-    expect(fitImageFrame(source, "fill")).toBe("https://example.test/oil.jpg");
+  it("selects full-photo or optional crop mode in one click while centering", () => {
+    const source = "https://example.test/oil.jpg#frame=18,73,2.25,cover";
+    expect(fitImageFrame(source, "contain")).toBe("https://example.test/oil.jpg");
     expect(fitImageFrame(source, "cover")).toBe("https://example.test/oil.jpg#frame=50,50,1,cover");
-    expect(fitImageFrame(source, "contain")).toBe("https://example.test/oil.jpg#frame=50,50,1,contain");
   });
 
-  it("uses full-frame fill for images without saved framing and preserves explicit modes", () => {
-    expect(defaultImageFrame.fit).toBe("fill");
-    expect(parseImageFrame("https://example.test/new-upload.jpg").fit).toBe("fill");
-    expect(parseImageFrame("https://example.test/existing-oil.jpg#frame=50,36,1").fit).toBe("fill");
-    expect(parseImageFrame("https://example.test/oil.jpg#frame=50,36,1,cover").fit).toBe("cover");
-    expect(parseImageFrame("https://example.test/oil.jpg#frame=50,36,1,contain").fit).toBe("contain");
+  it("defaults to the full photo without distortion and reads older frame URLs safely", () => {
+    expect(defaultImageFrame.fit).toBe("contain");
+    expect(parseImageFrame("https://example.test/new-upload.jpg").fit).toBe("contain");
+    expect(parseImageFrame("https://example.test/old.jpg#frame=50,36,1").fit).toBe("contain");
+    expect(parseImageFrame("https://example.test/old-fill.jpg#frame=50,36,1,fill").fit).toBe("contain");
+    expect(parseImageFrame("https://example.test/cropped.jpg#frame=50,36,1,cover").fit).toBe("cover");
+    expect(parseImageFrame("https://example.test/full.jpg#frame=50,36,1,contain").fit).toBe("contain");
+    expect(imageFrameStyle("https://example.test/new-upload.jpg").objectFit).toBe("contain");
   });
 });

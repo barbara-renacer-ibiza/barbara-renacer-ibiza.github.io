@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   imageFrameStyle,
+  moveImageFrame,
   parseImageFrame,
   withImageFrame,
   type ImageFrame,
@@ -415,6 +416,7 @@ function ImageFrameEditor({
     onChange(withImageFrame(value, { ...frame, ...patch }));
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!value) return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, frame };
   };
@@ -422,9 +424,14 @@ function ImageFrameEditor({
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const nextX = drag.frame.x + ((event.clientX - drag.startX) / rect.width) * 100;
-    const nextY = drag.frame.y + ((event.clientY - drag.startY) / rect.height) * 100;
-    onChange(withImageFrame(value, { ...drag.frame, x: nextX, y: nextY }));
+    const movedFrame = moveImageFrame(
+      drag.frame,
+      event.clientX - drag.startX,
+      event.clientY - drag.startY,
+      rect.width,
+      rect.height
+    );
+    onChange(withImageFrame(value, movedFrame));
   };
   const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
     if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
@@ -454,7 +461,7 @@ function ImageFrameEditor({
       </div>
       {value ? (
         <div className="admin-frame-controls">
-          <small className="admin-frame-hint">Trascina la foto dentro dell’anteprima per posizionarla.</small>
+          <small className="admin-frame-hint">Trascina la foto: l’anteprima si aggiorna subito. Salva il prodotto per pubblicare il taglio.</small>
           <label>
             Orizzontale{" "}
             <input
@@ -482,7 +489,7 @@ function ImageFrameEditor({
             <input
               type="range"
               min="1"
-              max="2.5"
+              max="4"
               step="0.05"
               value={frame.scale}
               onChange={event => update({ scale: Number(event.target.value) })}
@@ -903,10 +910,33 @@ export default function Admin() {
     setNotice("");
     try {
       const currentSource = `${product.name}\u0000${product.description}`;
+      const existingProduct = editingProduct
+        ? products.find(item => item.id === editingProduct)
+        : undefined;
+      const existingTranslations =
+        existingProduct?.nameEn &&
+        existingProduct.descriptionEn &&
+        existingProduct.nameEs &&
+        existingProduct.descriptionEs
+          ? {
+              en: {
+                name: existingProduct.nameEn,
+                description: existingProduct.descriptionEn,
+              },
+              es: {
+                name: existingProduct.nameEs,
+                description: existingProduct.descriptionEs,
+              },
+            }
+          : null;
       const translated =
         translationSource === currentSource && productTranslations
           ? productTranslations
-          : await translateItalianInBrowser(product.name, product.description);
+          : existingTranslations &&
+              product.name.trim() === existingProduct?.nameIt &&
+              product.description.trim() === existingProduct?.descriptionIt
+            ? existingTranslations
+            : await translateItalianInBrowser(product.name, product.description);
       if (
         !translated?.en?.name ||
         !translated?.en?.description ||

@@ -1335,7 +1335,7 @@ body { background: var(--paper); color: var(--ink); }
 .admin-frame-preview { position: relative; display: grid; place-items: center; aspect-ratio: 1.05 / 1; overflow: hidden; border: 1px solid #dfe5db; border-radius: 11px; color: #738173; background: #eff2eb; font-size: 11px; }
 .admin-frame-preview.is-draggable { cursor: grab; touch-action: none; }
 .admin-frame-preview.is-draggable:active { cursor: grabbing; }
-.admin-frame-preview img { width: 100%; height: 100%; object-fit: cover; transition: object-position .15s ease, transform .15s ease; user-select: none; }
+.admin-frame-preview img { width: 100%; height: 100%; object-fit: cover; transition: none; user-select: none; -webkit-user-drag: none; }
 .admin-frame-preview > span { display: flex; align-items: center; gap: 8px; }
 .admin-frame-controls { display: grid; gap: 7px; padding: 9px 10px; border: 1px solid #e0e6dc; border-radius: 10px; background: #f8faf5; }
 .admin-frame-controls label { display: grid; grid-template-columns: 78px minmax(0,1fr); align-items: center; gap: 8px; color: #6b786b; font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }

@@ -218,119 +218,56 @@ async function adminRequest(
   return data;
 }
 
-function splitTranslationText(text: string, limit = 450) {
-  const paragraphs: string[][] = [];
-  for (const paragraph of text.split(/\n\s*\n/)) {
-    const chunks: string[] = [];
-    const sentences = paragraph
-      .trim()
-      .split(/(?<=[.!?…])\s+/u)
-      .filter(Boolean);
-    let current = "";
-    for (const sentence of sentences) {
-      if (
-        sentence.length <= limit &&
-        current &&
-        `${current} ${sentence}`.length <= limit
-      )
-        current += ` ${sentence}`;
-      else if (sentence.length <= limit) {
-        if (current) chunks.push(current);
-        current = sentence;
-      } else {
-        if (current) {
-          chunks.push(current);
-          current = "";
-        }
-        for (let start = 0; start < sentence.length; start += limit)
-          chunks.push(sentence.slice(start, start + limit));
-      }
-    }
-    if (current) chunks.push(current);
-    if (chunks.length) paragraphs.push(chunks);
-  }
-  return paragraphs.length ? paragraphs : [[text.trim()]];
+async function translateItalianOnServer(name: string, description: string) {
+  return adminRequest("translate", {
+    sourceLanguage: "it",
+    name,
+    description,
+  });
 }
 
-async function translateItalianInBrowser(title: string, body: string) {
-  const targets = [
-    { language: "en" as const, paragraphs: splitTranslationText(title) },
-    { language: "es" as const, paragraphs: splitTranslationText(title) },
-    { language: "en" as const, paragraphs: splitTranslationText(body) },
-    { language: "es" as const, paragraphs: splitTranslationText(body) },
-  ];
-  const translated = targets.map(target =>
-    target.paragraphs.map(chunks => chunks.map(() => ""))
-  );
-  const tasks: Array<{
-    target: number;
-    paragraph: number;
-    chunk: number;
-    text: string;
-  }> = [];
-  targets.forEach((target, targetIndex) =>
-    target.paragraphs.forEach((chunks, paragraphIndex) =>
-      chunks.forEach((text, chunkIndex) =>
-        tasks.push({ target: targetIndex, paragraph: paragraphIndex, chunk: chunkIndex, text })
-      )
-    )
-  );
-  const translateChunk = async (text: string, language: "en" | "es"): Promise<string> => {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=it|${language}`;
-    let lastError = "Traduzione incompleta. Riprova tra poco.";
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const response = await fetch(url);
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error("Servizio di traduzione non disponibile.");
-        const value = result?.responseData?.translatedText;
-        const providerError = String(result?.responseDetails || value || "");
-        if (/QUERY LENGTH LIMIT EXCEEDED/i.test(providerError)) {
-          const middle = Math.floor(text.length / 2);
-          const leftBreak = text.lastIndexOf(" ", middle);
-          const rightBreak = text.indexOf(" ", middle);
-          const splitAt = leftBreak > 0 && (rightBreak < 0 || middle - leftBreak <= rightBreak - middle)
-            ? leftBreak
-            : rightBreak;
-          const points = Array.from(text);
-          if (text.length < 2) throw new Error(lastError);
-          const firstPart = splitAt > 0 ? text.slice(0, splitAt).trim() : points.slice(0, Math.ceil(points.length / 2)).join("");
-          const secondPart = splitAt > 0 ? text.slice(splitAt).trim() : points.slice(Math.ceil(points.length / 2)).join("");
-          const [first, second] = await Promise.all([
-            translateChunk(firstPart, language),
-            translateChunk(secondPart, language),
-          ]);
-          return `${first} ${second}`.trim();
-        }
-        if (typeof value === "string" && value.trim()) return value.trim();
-        throw new Error(lastError);
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : lastError;
-        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
-      }
+async function translateRichArticleHtml(
+  html: string
+): Promise<{ en: string; es: string }> {
+  const sourceHtml = sanitizeArticleHtml(html);
+  const sourceDocument = new DOMParser().parseFromString(sourceHtml, "text/html");
+  const englishDocument = new DOMParser().parseFromString(sourceHtml, "text/html");
+  const spanishDocument = new DOMParser().parseFromString(sourceHtml, "text/html");
+  const collectTextNodes = (root: Node, ownerDocument: Document) => {
+    const nodes: Text[] = [];
+    const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (node.textContent?.trim()) nodes.push(node);
     }
-    throw new Error(lastError);
+    return nodes;
   };
+  const sourceNodes = collectTextNodes(sourceDocument.body, sourceDocument);
+  const englishNodes = collectTextNodes(englishDocument.body, englishDocument);
+  const spanishNodes = collectTextNodes(spanishDocument.body, spanishDocument);
+  if (sourceNodes.length !== englishNodes.length || sourceNodes.length !== spanishNodes.length)
+    throw new Error("Impossibile conservare la formattazione dell'articolo.");
+
   let cursor = 0;
-  const workers = Array.from({ length: Math.min(3, tasks.length) }, async () => {
-    while (cursor < tasks.length) {
-      const task = tasks[cursor++];
-      translated[task.target][task.paragraph][task.chunk] = await translateChunk(
-        task.text,
-        targets[task.target].language
-      );
+  const workers = Array.from({ length: Math.min(3, sourceNodes.length) }, async () => {
+    while (cursor < sourceNodes.length) {
+      const index = cursor++;
+      const original = sourceNodes[index].textContent ?? "";
+      const leading = original.match(/^\s*/)?.[0] ?? "";
+      const trailing = original.match(/\s*$/)?.[0] ?? "";
+      const translated = await translateItalianOnServer("", original.trim());
+      const english = String(translated?.en?.description || "").trim();
+      const spanish = String(translated?.es?.description || "").trim();
+      if (!english || !spanish)
+        throw new Error("Traduzione incompleta. Riprova tra poco.");
+      englishNodes[index].textContent = `${leading}${english}${trailing}`;
+      spanishNodes[index].textContent = `${leading}${spanish}${trailing}`;
     }
   });
   await Promise.all(workers);
-  const completeText = (index: number) =>
-    translated[index].map(paragraph => paragraph.join(" ")).join("\n\n");
-  const titleEn = completeText(0);
-  const titleEs = completeText(1);
-  const bodyEn = completeText(2);
-  const bodyEs = completeText(3);
   return {
-    en: { name: titleEn, description: bodyEn },
-    es: { name: titleEs, description: bodyEs },
+    en: sanitizeArticleHtml(englishDocument.body.innerHTML),
+    es: sanitizeArticleHtml(spanishDocument.body.innerHTML),
   };
 }
 
@@ -338,32 +275,6 @@ function hasValidAdminSession() {
   const token = sessionStorage.getItem("renacer_admin_token");
   const expiry = Number(token?.split(".")[0]);
   return Number.isFinite(expiry) && expiry > Date.now();
-}
-
-async function translateRichArticleHtml(html: string, language: "en" | "es") {
-  const parsed = new DOMParser().parseFromString(sanitizeArticleHtml(html), "text/html");
-  const textNodes: Text[] = [];
-  const walker = parsed.createTreeWalker(parsed.body, NodeFilter.SHOW_TEXT);
-  while (walker.nextNode()) {
-    const node = walker.currentNode as Text;
-    if (node.textContent?.trim()) textNodes.push(node);
-  }
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(3, textNodes.length) }, async () => {
-    while (cursor < textNodes.length) {
-      const node = textNodes[cursor++];
-      const original = node.textContent ?? "";
-      const leading = original.match(/^\s*/)?.[0] ?? "";
-      const trailing = original.match(/\s*$/)?.[0] ?? "";
-      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(original.trim())}&langpair=it|${language}`);
-      const result = await response.json().catch(() => ({}));
-      const translated = result?.responseData?.translatedText;
-      if (!response.ok || typeof translated !== "string" || !translated.trim() || translated.includes("QUERY LENGTH LIMIT EXCEEDED")) throw new Error("Traduzione incompleta. Riprova tra poco.");
-      node.textContent = `${leading}${translated.trim()}${trailing}`;
-    }
-  });
-  await Promise.all(workers);
-  return sanitizeArticleHtml(parsed.body.innerHTML);
 }
 
 function AdminHeader({ onLogout }: { onLogout?: () => void }) {
@@ -932,7 +843,7 @@ export default function Admin() {
     setNotice("");
     setOperationStatus("Preparazione delle traduzioni in corso. Attendi senza chiudere la pagina.");
     try {
-      const translated = await translateItalianInBrowser(product.name, product.description);
+      const translated = await translateItalianOnServer(product.name, product.description);
       if (!translated?.en || !translated?.es)
         throw new Error("Traduzioni incomplete.");
       setProductTranslations(translated);
@@ -1004,7 +915,7 @@ export default function Admin() {
               product.name.trim() === existingProduct?.nameIt &&
               product.description.trim() === existingProduct?.descriptionIt
             ? existingTranslations
-            : await translateItalianInBrowser(product.name, product.description);
+            : await translateItalianOnServer(product.name, product.description);
       if (
         !translated?.en?.name ||
         !translated?.en?.description ||
@@ -1252,14 +1163,20 @@ export default function Admin() {
     setNotice("");
     try {
       const richBody = isRichArticleHtml(article.body);
-      const translated = await translateItalianInBrowser(article.title, richBody ? article.title : article.body);
-      const bodyEn = richBody ? await translateRichArticleHtml(article.body, "en") : translated.en.description;
-      const bodyEs = richBody ? await translateRichArticleHtml(article.body, "es") : translated.es.description;
+      const translated = await translateItalianOnServer(
+        article.title,
+        richBody ? "" : article.body
+      );
+      const richTranslations = richBody
+        ? await translateRichArticleHtml(article.body)
+        : null;
+      const bodyEn = richTranslations?.en ?? translated?.en?.description;
+      const bodyEs = richTranslations?.es ?? translated?.es?.description;
       if (
         !translated?.en?.name ||
-        !translated?.en?.description ||
+        !bodyEn ||
         !translated?.es?.name ||
-        !translated?.es?.description
+        !bodyEs
       ) {
         throw new Error("Traduzioni incomplete. Controlla il testo e riprova.");
       }

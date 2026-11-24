@@ -219,8 +219,9 @@ async function adminRequest(
 }
 
 function splitTranslationText(text: string, limit = 450) {
-  const chunks: string[] = [];
+  const paragraphs: string[][] = [];
   for (const paragraph of text.split(/\n\s*\n/)) {
+    const chunks: string[] = [];
     const sentences = paragraph
       .trim()
       .split(/(?<=[.!?…])\s+/u)
@@ -246,40 +247,87 @@ function splitTranslationText(text: string, limit = 450) {
       }
     }
     if (current) chunks.push(current);
+    if (chunks.length) paragraphs.push(chunks);
   }
-  return chunks.length ? chunks : [text.trim()];
+  return paragraphs.length ? paragraphs : [[text.trim()]];
 }
 
 async function translateItalianInBrowser(title: string, body: string) {
-  const translate = async (text: string, lang: "en" | "es") => {
-    const translated: string[] = [];
-    for (const chunk of splitTranslationText(text)) {
-      let response: Response | null = null;
-      let result: any = {};
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        response = await fetch(
-          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=it|${lang}`
-        );
-        result = await response.json().catch(() => ({}));
-        if (response.ok) break;
-        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
-      }
-      const value = result?.responseData?.translatedText;
-      if (
-        !response?.ok ||
-        typeof value !== "string" ||
-        !value.trim() ||
-        value.includes("QUERY LENGTH LIMIT EXCEEDED")
+  const targets = [
+    { language: "en" as const, paragraphs: splitTranslationText(title) },
+    { language: "es" as const, paragraphs: splitTranslationText(title) },
+    { language: "en" as const, paragraphs: splitTranslationText(body) },
+    { language: "es" as const, paragraphs: splitTranslationText(body) },
+  ];
+  const translated = targets.map(target =>
+    target.paragraphs.map(chunks => chunks.map(() => ""))
+  );
+  const tasks: Array<{
+    target: number;
+    paragraph: number;
+    chunk: number;
+    text: string;
+  }> = [];
+  targets.forEach((target, targetIndex) =>
+    target.paragraphs.forEach((chunks, paragraphIndex) =>
+      chunks.forEach((text, chunkIndex) =>
+        tasks.push({ target: targetIndex, paragraph: paragraphIndex, chunk: chunkIndex, text })
       )
-        throw new Error("Traduzione incompleta. Riprova tra poco.");
-      translated.push(value.trim());
+    )
+  );
+  const translateChunk = async (text: string, language: "en" | "es"): Promise<string> => {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=it|${language}`;
+    let lastError = "Traduzione incompleta. Riprova tra poco.";
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch(url);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error("Servizio di traduzione non disponibile.");
+        const value = result?.responseData?.translatedText;
+        const providerError = String(result?.responseDetails || value || "");
+        if (/QUERY LENGTH LIMIT EXCEEDED/i.test(providerError)) {
+          const middle = Math.floor(text.length / 2);
+          const leftBreak = text.lastIndexOf(" ", middle);
+          const rightBreak = text.indexOf(" ", middle);
+          const splitAt = leftBreak > 0 && (rightBreak < 0 || middle - leftBreak <= rightBreak - middle)
+            ? leftBreak
+            : rightBreak;
+          const points = Array.from(text);
+          if (text.length < 2) throw new Error(lastError);
+          const firstPart = splitAt > 0 ? text.slice(0, splitAt).trim() : points.slice(0, Math.ceil(points.length / 2)).join("");
+          const secondPart = splitAt > 0 ? text.slice(splitAt).trim() : points.slice(Math.ceil(points.length / 2)).join("");
+          const [first, second] = await Promise.all([
+            translateChunk(firstPart, language),
+            translateChunk(secondPart, language),
+          ]);
+          return `${first} ${second}`.trim();
+        }
+        if (typeof value === "string" && value.trim()) return value.trim();
+        throw new Error(lastError);
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : lastError;
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+      }
     }
-    return translated.join("\n\n");
+    throw new Error(lastError);
   };
-  const titleEn = await translate(title, "en");
-  const titleEs = await translate(title, "es");
-  const bodyEn = await translate(body, "en");
-  const bodyEs = await translate(body, "es");
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(3, tasks.length) }, async () => {
+    while (cursor < tasks.length) {
+      const task = tasks[cursor++];
+      translated[task.target][task.paragraph][task.chunk] = await translateChunk(
+        task.text,
+        targets[task.target].language
+      );
+    }
+  });
+  await Promise.all(workers);
+  const completeText = (index: number) =>
+    translated[index].map(paragraph => paragraph.join(" ")).join("\n\n");
+  const titleEn = completeText(0);
+  const titleEs = completeText(1);
+  const bodyEn = completeText(2);
+  const bodyEs = completeText(3);
   return {
     en: { name: titleEn, description: bodyEn },
     es: { name: titleEs, description: bodyEs },
@@ -607,6 +655,7 @@ export default function Admin() {
   const [unlocked, setUnlocked] = useState(hasValidAdminSession);
   const [pinError, setPinError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [operationStatus, setOperationStatus] = useState("");
   const [error, setError] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -883,6 +932,7 @@ export default function Admin() {
     setBusy(true);
     setError("");
     setNotice("");
+    setOperationStatus("Preparazione delle traduzioni in corso. Attendi senza chiudere la pagina.");
     try {
       const translated = await translateItalianInBrowser(product.name, product.description);
       if (!translated?.en || !translated?.es)
@@ -906,6 +956,7 @@ export default function Admin() {
         );
     } finally {
       setBusy(false);
+      setOperationStatus("");
     }
   };
 
@@ -926,6 +977,7 @@ export default function Admin() {
     setBusy(true);
     setError("");
     setNotice("");
+    setOperationStatus("Traduzione e salvataggio in corso. Attendi la conferma prima di chiudere la pagina.");
     try {
       const currentSource = `${product.name}\u0000${product.description}`;
       const existingProduct = editingProduct
@@ -988,6 +1040,7 @@ export default function Admin() {
             0)
           : 1,
       };
+      setOperationStatus("Aggiornamento del catalogo in corso…");
       await adminRequest(editingProduct ? "update" : "create", {
         id: editingProduct,
         product: data,
@@ -1009,6 +1062,7 @@ export default function Admin() {
         );
     } finally {
       setBusy(false);
+      setOperationStatus("");
     }
   };
 
@@ -1762,6 +1816,11 @@ export default function Admin() {
           {notice && (
             <p className="admin-success admin-alert">
               <CheckCircle2 size={14} /> {notice}
+            </p>
+          )}
+          {operationStatus && (
+            <p className="admin-alert" role="status" aria-live="polite">
+              {operationStatus}
             </p>
           )}
 

@@ -7,7 +7,7 @@ describe("image frame editor", () => {
       x: 25,
       y: 75,
       scale: 1,
-      fit: "cover",
+      fit: "fill",
     });
   });
 
@@ -16,7 +16,7 @@ describe("image frame editor", () => {
       x: 100,
       y: 0,
       scale: 2,
-      fit: "cover",
+      fit: "fill",
     });
   });
 
@@ -35,7 +35,16 @@ describe("image frame editor", () => {
 
   it("auto-fills or shows the whole photo in one click while centering it", () => {
     const source = "https://example.test/oil.jpg#frame=18,73,2.25,contain";
-    expect(fitImageFrame(source, "cover")).toBe("https://example.test/oil.jpg");
+    expect(fitImageFrame(source, "fill")).toBe("https://example.test/oil.jpg");
+    expect(fitImageFrame(source, "cover")).toBe("https://example.test/oil.jpg#frame=50,50,1,cover");
     expect(fitImageFrame(source, "contain")).toBe("https://example.test/oil.jpg#frame=50,50,1,contain");
+  });
+
+  it("uses full-frame fill for images without saved framing and preserves explicit modes", () => {
+    expect(defaultImageFrame.fit).toBe("fill");
+    expect(parseImageFrame("https://example.test/new-upload.jpg").fit).toBe("fill");
+    expect(parseImageFrame("https://example.test/existing-oil.jpg#frame=50,36,1").fit).toBe("fill");
+    expect(parseImageFrame("https://example.test/oil.jpg#frame=50,36,1,cover").fit).toBe("cover");
+    expect(parseImageFrame("https://example.test/oil.jpg#frame=50,36,1,contain").fit).toBe("contain");
   });
 });

@@ -500,9 +500,16 @@ function ImageFrameEditor({
             <button
               className="admin-frame-fit admin-frame-fit--fill"
               type="button"
+              onClick={() => onChange(fitImageFrame(value, "fill"))}
+            >
+              Adatta tutta la foto
+            </button>
+            <button
+              className="admin-frame-fit"
+              type="button"
               onClick={() => onChange(fitImageFrame(value, "cover"))}
             >
-              Riempi riquadro
+              Riempi riquadro (ritaglio)
             </button>
             <button
               className="admin-frame-fit"
@@ -513,7 +520,7 @@ function ImageFrameEditor({
             </button>
           </div>
           <small className="admin-frame-fit-note">
-            Riempi riquadro copre tutti i bordi ma può ritagliare i lati; la foto intera mantiene ogni parte visibile.
+            Adatta tutta la foto non ritaglia ma può deformarne leggermente le proporzioni; Riempi riquadro può tagliare i lati, mentre Mostra foto intera può lasciare margini.
           </small>
           <button
             className="admin-frame-reset"

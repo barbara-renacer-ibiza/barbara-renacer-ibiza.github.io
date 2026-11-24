@@ -489,10 +489,17 @@ function ImageFrameEditor({
             />
           </label>
           <button
+            className="admin-frame-fit"
+            type="button"
+            onClick={() => update({ fit: frame.fit === "contain" ? "cover" : "contain" })}
+          >
+            {frame.fit === "contain" ? "Ritaglia per riempire" : "Mostra foto intera"}
+          </button>
+          <button
             className="admin-frame-reset"
             type="button"
             onClick={() =>
-              onChange(withImageFrame(value, { x: 50, y: 50, scale: 1 }))
+              onChange(withImageFrame(value, { x: 50, y: 50, scale: 1, fit: "cover" }))
             }
           >
             Reimposta

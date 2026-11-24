@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   imageFrameStyle,
   parseImageFrame,
@@ -410,16 +410,41 @@ function ImageFrameEditor({
   label: string;
 }) {
   const frame = parseImageFrame(value);
+  const dragRef = useRef<{ pointerId: number; startX: number; startY: number; frame: ImageFrame } | null>(null);
   const update = (patch: Partial<ImageFrame>) =>
     onChange(withImageFrame(value, { ...frame, ...patch }));
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!value) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, frame };
+  };
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nextX = drag.frame.x + ((event.clientX - drag.startX) / rect.width) * 100;
+    const nextY = drag.frame.y + ((event.clientY - drag.startY) / rect.height) * 100;
+    onChange(withImageFrame(value, { ...drag.frame, x: nextX, y: nextY }));
+  };
+  const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+  };
   return (
     <div className="admin-frame-editor">
-      <div className="admin-frame-preview" aria-label={`Anteprima ${label}`}>
+      <div
+        className={`admin-frame-preview${value ? " is-draggable" : ""}`}
+        aria-label={`Anteprima ${label}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragging}
+        onPointerCancel={stopDragging}
+      >
         {value ? (
           <img
             src={value}
             alt={`Anteprima ${label}`}
             style={imageFrameStyle(value)}
+            draggable={false}
           />
         ) : (
           <span>
@@ -429,6 +454,7 @@ function ImageFrameEditor({
       </div>
       {value ? (
         <div className="admin-frame-controls">
+          <small className="admin-frame-hint">Trascina la foto dentro dell’anteprima per posizionarla.</small>
           <label>
             Orizzontale{" "}
             <input

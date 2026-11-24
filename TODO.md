@@ -64,7 +64,7 @@
 - [x] Order the homepage so the opening comes first, then `La cura della pelle passa anche da ciò che mangiamo` and the Nutrition section, followed by `Scopri la collezione` and catalogue links.
 - [x] Replace the unnatural personal-section ending `arriva alla fine...` with an Italian phrase describing the person bringing Renacer to life; update the contact copy to cover holistic nutrition, detox meetings, products, availability and markets.
 - [x] Add a combined hero image using the existing Renacer/Ibiza skincare composition with figs, pomegranate, avocado and other fresh produce; keep the real products and place recognizable and avoid invented people or labels.
-- [x] In Admin product, article and raw-material image forms, provide a preview plus horizontal/vertical framing and zoom controls with reset; preserve old images and apply saved framing on public catalogue, article and plant renderers.
+- [x] In Admin product, article and raw-material image forms, provide a catalogue-matched live preview, direct drag positioning, horizontal/vertical framing and zoom controls with reset; preserve old images and apply saved framing on public catalogue, article and plant renderers.
 - [x] Validate the implementation with `pnpm check`, `pnpm build:static` and `git diff --check`; existing Vite warnings remain non-blocking.
 - [ ] Push the finished changes to `origin/main`, wait for GitHub Pages deployment, then verify the published homepage and `/admin` framing controls.
 - [x] إصلاح لوحة صورة قسم التغذية في الصفحة الرئيسية باستخدام صورة التغذية داخل إطار ثابت ومتجاوب، مع إبقاء الشعار واضحًا.

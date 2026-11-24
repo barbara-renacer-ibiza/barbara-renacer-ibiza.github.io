@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultImageFrame, moveImageFrame, parseImageFrame, withImageFrame } from "./imageFrame";
+import { defaultImageFrame, fitImageFrame, moveImageFrame, parseImageFrame, withImageFrame } from "./imageFrame";
 
 describe("image frame editor", () => {
   it("pans opposite the pointer delta so the photo follows the drag", () => {
@@ -31,5 +31,11 @@ describe("image frame editor", () => {
     });
     expect(url).toBe("https://example.test/oil.jpg#frame=50,50,4");
     expect(parseImageFrame(url).scale).toBe(4);
+  });
+
+  it("auto-fills or shows the whole photo in one click while centering it", () => {
+    const source = "https://example.test/oil.jpg#frame=18,73,2.25,contain";
+    expect(fitImageFrame(source, "cover")).toBe("https://example.test/oil.jpg");
+    expect(fitImageFrame(source, "contain")).toBe("https://example.test/oil.jpg#frame=50,50,1,contain");
   });
 });

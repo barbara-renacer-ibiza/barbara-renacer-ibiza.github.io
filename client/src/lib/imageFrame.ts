@@ -49,6 +49,10 @@ export function withImageFrame(value: string, frame: ImageFrame) {
   return isDefault ? cleanUrl : `${cleanUrl}#frame=${normalized.x},${normalized.y},${normalized.scale}${normalized.fit === "contain" ? `,${normalized.fit}` : ""}`;
 }
 
+export function fitImageFrame(value: string, fit: ImageFrame["fit"]) {
+  return withImageFrame(value, { ...defaultImageFrame, fit });
+}
+
 export function imageFrameStyle(value: string | null | undefined): CSSProperties {
   const frame = parseImageFrame(value);
   return {

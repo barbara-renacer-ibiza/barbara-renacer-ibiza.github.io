@@ -1249,8 +1249,8 @@ body { background: var(--paper); color: var(--ink); }
 .catalogue-categories button.is-active,.catalogue-categories button:hover { color:#fff; border-color:var(--forest); background:var(--forest); }
 .catalogue-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
 .catalogue-card { min-width:0; overflow:hidden; border:1px solid #e6e7df; border-radius:14px; background:#fffefa; box-shadow:0 8px 20px rgba(31,55,40,.045); }
-.catalogue-card__image { display:grid; place-items:center; overflow:hidden; aspect-ratio:1.05/1; background:#edf0e8; color:#637e64; }
-.catalogue-card__image img { width:100%; height:100%; object-fit:cover; transition:transform .35s ease; }
+.catalogue-card__image { position:relative; display:grid; place-items:center; overflow:hidden; aspect-ratio:1.05/1; background:#edf0e8; color:#637e64; }
+.catalogue-card__image img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .35s ease; }
 .catalogue-card:hover .catalogue-card__image img { transform:scale(1.035); }
 .catalogue-card__content { padding:13px 14px 14px; }
 .catalogue-card__content > small { color:#8b9689; font-size:9px; letter-spacing:.08em; text-transform:uppercase; }

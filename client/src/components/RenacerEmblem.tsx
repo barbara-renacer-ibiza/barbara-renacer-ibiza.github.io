@@ -3,7 +3,7 @@ type RenacerEmblemProps = {
   label?: string;
 };
 
-export default function RenacerEmblem({ className = "nutrition-hero__mark", label = "Renacer Ibiza" }: RenacerEmblemProps) {
+export default function RenacerEmblem({ className = "nutrition-hero__mark", label = "Renacer Ibiza · Rituales de cuidados" }: RenacerEmblemProps) {
   return (
     <div className={className} role="img" aria-label={label}>
       <svg className="nutrition-hero__emblem" viewBox="0 0 84 84" aria-hidden="true">

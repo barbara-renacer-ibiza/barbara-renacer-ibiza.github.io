@@ -123,7 +123,7 @@ export default function Plants() {
     const selected = materials.find((material) => material.slug === selectedSlug);
     if (!selected) return;
     const title = materialName(selected, language);
-    document.title = `${title} · Renacer Ibiza`;
+    document.title = `${title} · Renacer Ibiza · Rituales de cuidados`;
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) { meta = document.createElement("meta"); meta.setAttribute("name", "description"); document.head.append(meta); }
     meta.setAttribute("content", materialDescription(selected, language).slice(0, 155));
@@ -136,12 +136,12 @@ export default function Plants() {
 
   return (
     <div className="plants-page">
-      <div className="topline"><div className="container topline__inner"><span>{t("kicker")}</span><span className="topline__note"><Sprout size={13} /> Renacer · Ibiza</span></div></div>
+      <div className="topline"><div className="container topline__inner"><span>{t("kicker")}</span><span className="topline__note"><Sprout size={13} /> Renacer Ibiza · Rituales de cuidados</span></div></div>
       <header className="site-header">
         <div className="container header__inner">
-          <a className="brand" href="/" aria-label="Renacer Ibiza">
+          <a className="brand" href="/" aria-label="Renacer Ibiza · Rituales de cuidados">
             <img className="brand-logo-image" src={assetUrl("/images/logo-woman.png")} alt="" />
-            <span className="brand__text"><strong>Renacer</strong><small>Ibiza · artisan care</small></span>
+            <span className="brand__text"><strong>Renacer Ibiza</strong><small>Rituales de cuidados</small></span>
           </a>
           <nav className="plants-nav" aria-label={t("plants")}>
             <a href="/catalogue">{t("collection")}</a><a href="/nutrition">{t("nutrition")}</a><a className="is-active" href="/plants">{t("plants")}</a>
@@ -194,10 +194,10 @@ export default function Plants() {
       </main>
 
       <footer className="site-footer plants-footer"><div className="container footer__top">
-        <a className="brand brand--footer" href="/"><img className="brand-logo-image" src={assetUrl("/images/logo-woman.png")} alt="" /><span className="brand__text"><strong>Renacer</strong><small>Ibiza · artisan care</small></span></a>
+        <a className="brand brand--footer" href="/"><img className="brand-logo-image" src={assetUrl("/images/logo-woman.png")} alt="" /><span className="brand__text"><strong>Renacer Ibiza</strong><small>Rituales de cuidados</small></span></a>
         <div className="footer__links"><a href="/catalogue">{t("collection")}</a><a href="/nutrition">{t("nutrition")}</a><a href="/plants">{t("plants")}</a></div>
         <div className="footer__details"><span>{t("footer")}</span><a href="/admin">Gestione catalogo</a></div>
-      </div><div className="container footer__bottom"><a href="/#catalogo">{t("back")}</a><span>© {new Date().getFullYear()} Renacer · Ibiza</span></div></footer>
+      </div><div className="container footer__bottom"><a href="/#catalogo">{t("back")}</a><span>© {new Date().getFullYear()} Renacer Ibiza · Rituales de cuidados</span></div></footer>
     </div>
   );
 }

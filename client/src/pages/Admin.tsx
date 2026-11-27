@@ -1652,7 +1652,7 @@ export default function Admin() {
             <span>
               Area protetta
               <br />
-              <strong>Renacer · Ibiza</strong>
+              <strong>Renacer Ibiza</strong><small>Rituales de cuidados</small>
             </span>
           </div>
         </aside>

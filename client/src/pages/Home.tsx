@@ -144,7 +144,7 @@ function ProductCard({ product, language, ctaLabel, categoryLabel, plantMaterial
       <div className="product-card__image-wrap">
         {product.imageUrl ? <img src={product.imageUrl} alt={localized.name} className="product-card__image" style={imageFrameStyle(product.imageUrl)} /> : <div className="product-card__placeholder"><Leaf size={31} /></div>}
       </div>
-      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer · Ibiza"}</span></div><h3><a href={`/catalogue/${encodeURIComponent(product.slug)}`}>{localized.name}</a></h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small>
+      <div className="product-card__body"><div className="product-card__meta"><span>{localized.isFallback ? originalCopyLabel[language][product.sourceLanguage] : "Renacer Ibiza · Rituales de cuidados"}</span></div><h3><a href={`/catalogue/${encodeURIComponent(product.slug)}`}>{localized.name}</a></h3><p>{localized.description}</p>{product.priceCents > 0 ? <strong className="product-card__price">{(product.priceCents / 100).toFixed(2)} EUR</strong> : null}<small className="product-card__category">{categoryLabel}</small>
         {product.INCI?.trim() ? <details className="product-card__inci"><summary>{inciLabel}</summary><p>{product.INCI}</p></details> : null}
         {plantMaterials.length ? <div className="product-card__materials"><span>{rawMaterialsLabel}</span><div>{plantMaterials.map((material) => <a key={material.slug} href={`/plants?plant=${encodeURIComponent(material.slug)}`}>{language === "en" ? material.nameEn || material.nameIt : language === "es" ? material.nameEs || material.nameIt : material.nameIt}</a>)}</div></div> : null}
         <a className="button button--primary" href={link} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {ctaLabel} <ArrowUpRight size={15} /></a></div>
@@ -203,11 +203,11 @@ export default function Home() {
 
       <header className="site-header">
         <div className="container header__inner">
-          <a className="brand" href="#top" onClick={closeMenu} aria-label={language === "en" ? "Renacer · Ibiza, home page" : language === "es" ? "Renacer · Ibiza, página de inicio" : "Renacer · Ibiza, pagina iniziale"}>
+          <a className="brand" href="#top" onClick={closeMenu} aria-label={language === "en" ? "Renacer Ibiza · Rituales de cuidados, home page" : language === "es" ? "Renacer Ibiza · Rituales de cuidados, página de inicio" : "Renacer Ibiza · Rituales de cuidados, pagina iniziale"}>
             <img className="brand-logo-image" src={assetUrl("/images/logo-woman.png")} alt="Logo Renacer" />
             <span className="brand__text">
               <strong>Renacer</strong>
-              <small>Ibiza · {language === "en" ? "artisan care" : language === "es" ? "cuidado artesanal" : "cura artigianale"}</small>
+              <small>Rituales de cuidados</small>
             </span>
           </a>
 
@@ -422,7 +422,7 @@ export default function Home() {
 
         <section className="portrait-placeholder container" id="barbara">
           <div className="portrait-placeholder__frame">
-            <img src={assetUrl("/images/barbara.jpg")} alt="Barbara, fondatrice di Renacer · Ibiza" className="portrait-placeholder__image" />
+            <img src={assetUrl("/images/barbara.jpg")} alt="Barbara, fondatrice di Renacer Ibiza · Rituales de cuidados" className="portrait-placeholder__image" />
             <div className="portrait-placeholder__caption">Renacer<br /><span>Ibiza</span></div>
           </div>
           <div className="portrait-placeholder__copy">
@@ -437,7 +437,7 @@ export default function Home() {
         <div className="container footer__top">
           <a className="brand brand--footer" href="#top">
             <img className="brand-logo-image" src={assetUrl("/images/logo-woman.png")} alt="Logo Renacer" />
-            <span className="brand__text"><strong>Renacer</strong><small>Ibiza · {language === "en" ? "artisan care" : language === "es" ? "cuidado artesanal" : "cura artigianale"}</small></span>
+            <span className="brand__text"><strong>Renacer Ibiza</strong><small>Rituales de cuidados</small></span>
           </a>
           <div className="footer__links">
             <a href="#progetto">{t("project")}</a>
@@ -454,7 +454,7 @@ export default function Home() {
           {(socialLinks.facebookUrl || socialLinks.instagramUrl) ? <div className="footer-social" aria-label="Social media">{socialLinks.facebookUrl ? <a href={socialLinks.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7v3.1h2.7v8h3.5Z"/></svg></a> : null}{socialLinks.instagramUrl ? <a href={socialLinks.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.6" cy="6.6" r=".8"/></svg></a> : null}</div> : null}
         </div>
         <div className="container footer__bottom">
-          <span>© {new Date().getFullYear()} Renacer · Ibiza</span>
+          <span>© {new Date().getFullYear()} Renacer Ibiza · Rituales de cuidados</span>
           <span>{language === "en" ? "plants, hands and time" : language === "es" ? "plantas, manos y tiempo" : "piante, mani e tempo"} · <a href="/admin">{language === "en" ? "Catalogue management" : language === "es" ? "Gestión del catálogo" : "Gestione catalogo"}</a></span>
         </div>
       </footer>

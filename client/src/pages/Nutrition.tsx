@@ -86,18 +86,18 @@ export default function Nutrition() {
   useEffect(() => {
     window.localStorage.setItem("renacer_language", language);
     document.documentElement.lang = language;
-    document.title = article ? `${titleFor(article, language)} · Renacer Ibiza` : `${text.title} · Renacer Ibiza`;
+    document.title = article ? `${titleFor(article, language)} · Renacer Ibiza · Rituales de cuidados` : `${text.title} · Renacer Ibiza · Rituales de cuidados`;
     return () => { document.documentElement.lang = "it"; };
   }, [article, language, text.title]);
 
   return (
     <div className="site-shell nutrition-page">
-      <div className="topline"><div className="container topline__inner"><span>Renacer · Ibiza</span><span className="topline__note"><Leaf size={13} /> {text.eyebrow}</span></div></div>
+      <div className="topline"><div className="container topline__inner"><span>Renacer Ibiza · Rituales de cuidados</span><span className="topline__note"><Leaf size={13} /> {text.eyebrow}</span></div></div>
       <header className="site-header">
         <div className="container header__inner">
-          <a className="brand" href="/" aria-label="Renacer Ibiza, home">
+          <a className="brand" href="/" aria-label="Renacer Ibiza · Rituales de cuidados, home">
             <img className="brand-logo-image" src="/images/logo-woman.png" alt="" />
-            <span className="brand__text"><strong>Renacer</strong><small>Ibiza · {language === "en" ? "artisan care" : language === "es" ? "cuidado artesanal" : "cura artigianale"}</small></span>
+            <span className="brand__text"><strong>Renacer Ibiza</strong><small>Rituales de cuidados</small></span>
           </a>
           <nav className="nutrition-nav" aria-label="Navigation">
             <a href="/">{text.home}</a><a href="/catalogue">{text.catalog}</a>
@@ -146,7 +146,7 @@ export default function Nutrition() {
         )}
       </main>
 
-      <footer className="site-footer nutrition-footer"><div className="container footer__bottom"><span>© {new Date().getFullYear()} Renacer · Ibiza</span><a href="/">Renacer Ibiza</a></div></footer>
+      <footer className="site-footer nutrition-footer"><div className="container footer__bottom"><span>© {new Date().getFullYear()} Renacer Ibiza · Rituales de cuidados</span><a href="/">Renacer Ibiza · Rituales de cuidados</a></div></footer>
     </div>
   );
 }
